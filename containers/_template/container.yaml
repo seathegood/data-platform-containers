@@ -1,0 +1,51 @@
+name: "Example Package"
+slug: "example"
+summary: "Concise sentence that explains what the container runs."
+maintainers:
+  - name: Jane Doe
+    email: jane@example.com
+links:
+  homepage: https://example.com
+  source: https://example.com/source
+  documentation: https://example.com/docs
+license: Apache-2.0
+version:
+  strategy: manual
+  current: "0.0.0"
+  notes: "Replace with the upstream version that this container packages."
+runtime:
+  base_image: "ubuntu:22.04"
+  user: 1000:1000
+  workdir: "/opt/app"
+  entrypoint:
+    - "/opt/app/bin/start.sh"
+  cmd: []
+  ports:
+    - name: http
+      container_port: 8080
+      protocol: tcp
+  env:
+    - name: EXAMPLE_ENV
+      default: ""
+      description: "Document every environment variable your container supports."
+build:
+  context: "."
+  dockerfile: "Dockerfile"
+  args:
+    BASE_IMAGE: "!runtime.base_image"
+    PACKAGE_NAME: "!slug"
+    PACKAGE_VERSION: "!version.current"
+    UPSTREAM_URI: "https://example.com/downloads/example-!version.current.tar.gz"
+  files:
+    - source: "files/"
+      destination: "/opt/app/files"
+tests: []
+publish:
+  image: "ghcr.io/your-org/example"
+  tags:
+    - latest
+    - "!version.current"
+  labels:
+    org.opencontainers.image.title: "!name"
+    org.opencontainers.image.version: "!version.current"
+    org.opencontainers.image.description: "!summary"

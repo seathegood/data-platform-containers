@@ -1,0 +1,67 @@
+name: "UniFi Network Application"
+slug: "unifi-controller"
+summary: "Enterprise Wi-Fi management platform packaged for container deployments."
+maintainers:
+  - name: Platform Containers Team
+    email: containers@example.com
+links:
+  homepage: https://ui.com/download/unifi
+  documentation: https://help.ui.com/hc/en-us/categories/200320654-UniFi-Network
+  release_notes: https://community.ui.com/releases
+license: Proprietary
+version:
+  strategy: manual
+  current: "7.5.187"
+  notes: "Check https://dl.ui.com/unifi/debian/dists/stable/ubiquiti/binary-amd64/Packages for latest version."
+runtime:
+  base_image: "eclipse-temurin:17-jre-jammy"
+  user: 1000:1000
+  workdir: "/usr/lib/unifi"
+  entrypoint:
+    - "/usr/local/bin/docker-entrypoint.sh"
+  cmd:
+    - "start"
+  ports:
+    - name: https
+      container_port: 8443
+      protocol: tcp
+    - name: inform
+      container_port: 8080
+      protocol: tcp
+    - name: stun
+      container_port: 3478
+      protocol: udp
+  volumes:
+    - name: data
+      path: /var/lib/unifi
+  env:
+    - name: TZ
+      default: "UTC"
+      description: "Container timezone."
+    - name: JVM_HEAP_SIZE
+      default: "1024M"
+      description: "Maximum JVM heap size."  
+build:
+  context: "."
+  dockerfile: "Dockerfile"
+  args:
+    BASE_IMAGE: "!runtime.base_image"
+    PACKAGE_NAME: "unifi"
+    PACKAGE_VERSION: "!version.current"
+    UPSTREAM_URI: "https://dl.ui.com/unifi/!version.current/unifi_sysvinit_all.deb"
+    DEB_SHA256: ""
+  files:
+    - source: "files/"
+      destination: "/opt/unifi-overlay"
+tests:
+  - name: smoke
+    command: "./tests/smoke.sh"
+publish:
+  image: "ghcr.io/your-org/unifi-controller"
+  tags:
+    - latest
+    - "!version.current"
+  labels:
+    org.opencontainers.image.title: "!name"
+    org.opencontainers.image.description: "!summary"
+    org.opencontainers.image.version: "!version.current"

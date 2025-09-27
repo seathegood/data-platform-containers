@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
+Thumbs.db
+desktop.ini
+*$RECYCLE.BIN/
+Icon?
+.trash/
+*.swp
+*.swo
+*~
+.env
+.envrc
+.mypy_cache/
+.pytest_cache/
