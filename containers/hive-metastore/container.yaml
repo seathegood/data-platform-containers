@@ -1,0 +1,66 @@
+name: "Hive Metastore"
+slug: "hive-metastore"
+summary: "Apache Hive standalone metastore packaged with opinionated defaults."
+maintainers:
+  - name: Data Platform Team
+    email: dataplat@example.com
+links:
+  homepage: https://hive.apache.org/
+  documentation: https://cwiki.apache.org/confluence/display/Hive/Hive+Metastore
+  source: https://github.com/apache/hive
+license: Apache-2.0
+version:
+  strategy: manual
+  current: "3.1.3"
+  notes: "Monitor https://downloads.apache.org/hive/ for new standalone metastore releases."
+runtime:
+  base_image: "eclipse-temurin:11-jre-jammy"
+  user: 1000:1000
+  workdir: "/opt/hive-metastore"
+  entrypoint:
+    - "/opt/hive-metastore/bin/metastore-entrypoint.sh"
+  cmd:
+    - "run"
+  ports:
+    - name: thrift
+      container_port: 9083
+      protocol: tcp
+  env:
+    - name: METASTORE_DB_HOST
+      default: ""
+      description: "Hostname for the backing database."
+    - name: METASTORE_DB_PORT
+      default: "5432"
+      description: "Database port."
+    - name: METASTORE_DB_NAME
+      default: "metastore"
+      description: "Database name."
+    - name: METASTORE_DB_USER
+      default: "metastore"
+      description: "Database username."
+    - name: METASTORE_DB_PASS
+      default: ""
+      description: "Database password."
+build:
+  context: "."
+  dockerfile: "Dockerfile"
+  args:
+    BASE_IMAGE: "!runtime.base_image"
+    PACKAGE_VERSION: "!version.current"
+    TARBALL_URI: "https://downloads.apache.org/hive/hive-standalone-metastore-!version.current/hive-standalone-metastore-!version.current-bin.tar.gz"
+    TARBALL_SHA512: ""
+  files:
+    - source: "files/"
+      destination: "/opt/hive-metastore-overlay"
+tests:
+  - name: metadata
+    command: "./tests/metadata.py"
+publish:
+  image: "ghcr.io/your-org/hive-metastore"
+  tags:
+    - latest
+    - "!version.current"
+  labels:
+    org.opencontainers.image.title: "!name"
+    org.opencontainers.image.version: "!version.current"
+    org.opencontainers.image.description: "!summary"
