@@ -29,11 +29,10 @@ A reusable scaffolding for packaging third-party software into container images.
 The `docs/new-package.md` guide walks through these steps in more detail, including tips for mapping upstream releases to tags.
 
 ## Baseline Examples
-Two reference packages are included to demonstrate the template:
-- `unifi-controller` showcases packaging networking appliances released as `.deb` bundles and enabling health checks.
+A reference package is included to demonstrate the template:
 - `hive-metastore` demonstrates building JVM services, layering configuration, and smoke-testing with Docker Compose.
 
-Consult `containers/unifi-controller/README.md` and `containers/hive-metastore/README.md` for the full walkthroughs, including how upstream versions are discovered and promoted.
+Consult `containers/hive-metastore/README.md` for the full walkthrough, including how upstream versions are discovered and promoted.
 
 ## Automation Overview
 The repository ships with batteries included:
