@@ -1,0 +1,60 @@
+name: "Apache Airflow Runtime"
+slug: "airflow"
+summary: "Reusable Airflow image with shared provider dependencies and pinned constraints."
+maintainers:
+  - name: Platform Containers Team
+    email: containers@example.com
+links:
+  homepage: https://airflow.apache.org/
+  documentation: https://airflow.apache.org/docs/
+  source: https://github.com/apache/airflow
+license: Apache-2.0
+version:
+  strategy: pypi
+  current: "2.9.1"
+  component: apache-airflow
+  notes: "Refer to https://airflow.apache.org/docs/#release-notes for upgrade guidance."
+runtime:
+  base_image: "apache/airflow:!version.current-python3.10"
+  user: "airflow"
+  workdir: "/opt/airflow"
+  entrypoint:
+    - "/usr/bin/dumb-init"
+    - "--"
+    - "bash"
+    - "-c"
+    - "exec \"$@\""
+  cmd:
+    - "airflow"
+    - "version"
+  env:
+    - name: AIRFLOW__CORE__LOAD_EXAMPLES
+      default: "False"
+      description: "Disable loading example DAGs by default."
+  volumes:
+    - name: dags
+      path: /opt/airflow/dags
+    - name: logs
+      path: /opt/airflow/logs
+    - name: plugins
+      path: /opt/airflow/plugins
+build:
+  context: "."
+  dockerfile: "Dockerfile"
+  args:
+    AIRFLOW_VERSION: "!version.current"
+    PYTHON_VERSION: "3.10"
+    CONSTRAINTS_URL: "https://raw.githubusercontent.com/apache/airflow/constraints-!version.current/constraints-3.10.txt"
+tests:
+  - name: metadata
+    command: "./tests/metadata.py"
+publish:
+  image: "docker.io/seathegood/airflow-runtime"
+  tags:
+    - latest
+    - "!version.current"
+  labels:
+    org.opencontainers.image.title: "!name"
+    org.opencontainers.image.version: "!version.current"
+    org.opencontainers.image.description: "!summary"
+    org.opencontainers.image.documentation: "https://airflow.apache.org/docs/"

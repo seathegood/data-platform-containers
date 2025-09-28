@@ -29,10 +29,11 @@ A reusable scaffolding for packaging third-party software into container images.
 The `docs/new-package.md` guide walks through these steps in more detail, including tips for mapping upstream releases to tags.
 
 ## Baseline Examples
-A reference package is included to demonstrate the template:
+Two reference packages are included to demonstrate the template:
+- `airflow` shows how to extend official runtimes with shared dependencies, constraints, and upstream checks.
 - `hive-metastore` demonstrates building JVM services, layering configuration, and smoke-testing with Docker Compose.
 
-Consult `containers/hive-metastore/README.md` for the full walkthrough, including how upstream versions are discovered and promoted.
+Consult `containers/airflow/container.yaml` and `containers/hive-metastore/README.md` for walkthroughs, including how upstream versions are discovered and promoted.
 
 ## Automation Overview
 The repository ships with batteries included:
