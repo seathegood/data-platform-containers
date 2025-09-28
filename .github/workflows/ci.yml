@@ -30,7 +30,7 @@ jobs:
         id: packages
         run: |
           set -euo pipefail
-          packages=$(./scripts/package.py | awk '/^-/{print $2}')
+          packages=$(./scripts/package.py | awk '/^-/{print $2}' | grep -v '^_')
           PACKAGES="$packages" python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           import os
