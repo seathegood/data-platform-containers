@@ -43,7 +43,11 @@ Populate `containers/<package-name>/README.md` with:
 - Required secrets or TLS assets.
 - Example `docker run` and `docker compose` usage.
 
-## 7. Commit and Wire CI
-Add CI matrix entries if the package should publish on release. Ensure secrets for publishing (e.g. registry credentials) exist in the repository or organization settings before enabling automatic pushes.
+## 7. CI/CD Wiring
+The `CI` workflow enumerates every package under `containers/`, builds them with Docker Buildx, and reuses metadata defined in `container.yaml` to tag images. To plug in a new package:
+- Set `publish.image` and `publish.tags` so the workflow knows which registry references to push and sign.
+- Provide smoke tests via `tests/` entries; add an optional `tests/e2e.sh` script for dependency bootstrapping (run automatically when present).
+- Keep Dockerfiles and shell scripts lint-clean—`make check`, `shellcheck`, `hadolint`, and `trivy` all run in CI before builds.
+- Pushing to `main` publishes and cosign-signs images using the registry secrets plus GitHub OIDC; pull requests only build and verify artifacts.
 
 By following this playbook every container package stays well-documented, reproducible, and ready for automated maintenance.

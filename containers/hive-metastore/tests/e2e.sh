@@ -3,14 +3,15 @@ set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 PACKAGE="hive-metastore"
-NETWORK="${PACKAGE}-e2e"
+RUN_ID=${GITHUB_RUN_ID:-$RANDOM}
+NETWORK="${PACKAGE}-e2e-${RUN_ID}"
 POSTGRES_CONTAINER="${NETWORK}-postgres"
 METASTORE_CONTAINER="${NETWORK}-app"
 POSTGRES_IMAGE="postgres:15-alpine"
-METASTORE_IMAGE="docker.io/seathegood/hive-metastore:latest"
+METASTORE_IMAGE="${E2E_IMAGE:-docker.io/seathegood/hive-metastore:latest}"
 
 cleanup() {
-  status=$1
+  status=$?
   if [ "$status" -ne 0 ]; then
     echo "\n==> Hive Metastore logs"
     docker logs "$METASTORE_CONTAINER" 2>/dev/null || true
@@ -20,14 +21,21 @@ cleanup() {
   docker rm -f "$METASTORE_CONTAINER" >/dev/null 2>&1 || true
   docker rm -f "$POSTGRES_CONTAINER" >/dev/null 2>&1 || true
   docker network rm "$NETWORK" >/dev/null 2>&1 || true
+  exit "$status"
 }
-trap 'status=$?; cleanup "$status"; exit "$status"' EXIT
+trap cleanup EXIT
 
 cd "$ROOT_DIR"
 
 PACKAGE_CLI="$ROOT_DIR/scripts/package.py"
-"$PACKAGE_CLI" build "$PACKAGE"
-"$PACKAGE_CLI" test "$PACKAGE"
+
+if [ "${SKIP_PACKAGE_BUILD:-0}" != "1" ]; then
+  "$PACKAGE_CLI" build "$PACKAGE"
+fi
+
+if [ "${SKIP_PACKAGE_TEST:-0}" != "1" ]; then
+  "$PACKAGE_CLI" test "$PACKAGE"
+fi
 
 docker network create "$NETWORK" >/dev/null 2>&1 || true
 
@@ -38,6 +46,11 @@ docker run -d --rm \
   -e POSTGRES_PASSWORD=metastore \
   -e POSTGRES_DB=metastore \
   "$POSTGRES_IMAGE" >/dev/null
+
+if ! docker ps --filter "name=$POSTGRES_CONTAINER" --format '{{.Names}}' | grep -q "$POSTGRES_CONTAINER"; then
+  echo "Failed to start PostgreSQL container"
+  exit 1
+fi
 
 echo "Waiting for PostgreSQL to become ready..."
 for attempt in $(seq 1 30); do
@@ -63,6 +76,11 @@ docker run -d --rm \
   -e METASTORE_PORT=9083 \
   -e HIVE_METASTORE_HOST=127.0.0.1 \
   "$METASTORE_IMAGE" >/dev/null
+
+if ! docker ps --filter "name=$METASTORE_CONTAINER" --format '{{.Names}}' | grep -q "$METASTORE_CONTAINER"; then
+  echo "Failed to start Hive Metastore container"
+  exit 1
+fi
 
 echo "Waiting for Hive Metastore health check..."
 for attempt in $(seq 1 30); do
