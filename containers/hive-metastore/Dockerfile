@@ -1,6 +1,8 @@
 # Stage 1: Builder - fetch and validate Hive, Hadoop, and JDBC
 FROM eclipse-temurin:21-jdk-alpine AS builder
 
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+
 ARG HADOOP_VERSION=3.4.1
 ARG HIVE_VERSION=4.1.0
 ARG SCHEMA_VERSION=4.1.0
@@ -12,6 +14,7 @@ ENV HIVE_HOME=/opt/hive \
 
 COPY versions.json /opt/versions.json
 
+# hadolint ignore=DL3018 -- upstream Alpine packages updated regularly; pin at release cut
 RUN apk update && apk add --no-cache \
     bash \
     wget \
@@ -43,6 +46,8 @@ RUN wget -q https://repo1.maven.org/maven2/org/slf4j/slf4j-api/${SLF4J_VERSION}/
 
 # Stage 2: Runtime - minimal and secure image
 FROM eclipse-temurin:21-jdk-alpine AS runtime
+
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
 ARG HADOOP_VERSION=3.4.1
 ARG HIVE_VERSION=4.1.0
@@ -84,6 +89,7 @@ LABEL org.opencontainers.image.vendor="Sea the Good, LLC" \
       org.opencontainers.image.revision=${VCS_REF}
 
 # Install Prerequisites
+# hadolint ignore=DL3018 -- upstream Alpine packages updated regularly; pin at release cut
 RUN apk update && apk add --no-cache \
     bash \
     netcat-openbsd \
