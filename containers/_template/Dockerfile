@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.6
 
-# hadolint ignore=DL3006 -- base image overridden per-package
 ARG BASE_IMAGE=ubuntu:22.04
+# hadolint ignore=DL3006
 FROM ${BASE_IMAGE}
 
 ARG PACKAGE_NAME
@@ -15,7 +15,7 @@ ENV PACKAGE_NAME="${PACKAGE_NAME}" \
     PACKAGE_VERSION="${PACKAGE_VERSION}"
 
 # Install OS dependencies here. Split steps so caching works well.
-# hadolint ignore=DL3008 -- downstream packages must choose appropriate pinned versions
+# hadolint ignore=DL3008
 RUN --mount=type=cache,target=/var/cache/apt bash <<'EOS'
 set -euo pipefail
 apt-get update
