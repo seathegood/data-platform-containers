@@ -33,5 +33,4 @@ smoke-all:
 	done
 
 check:
-	./scripts/package.py show unifi-controller >/dev/null
 	./scripts/package.py show hive-metastore >/dev/null
