@@ -14,7 +14,7 @@ ENV HIVE_HOME=/opt/hive \
 
 COPY versions.json /opt/versions.json
 
-# hadolint ignore=DL3018 -- upstream Alpine packages updated regularly; pin at release cut
+# hadolint ignore=DL3018
 RUN apk update && apk add --no-cache \
     bash \
     wget \
@@ -89,7 +89,7 @@ LABEL org.opencontainers.image.vendor="Sea the Good, LLC" \
       org.opencontainers.image.revision=${VCS_REF}
 
 # Install Prerequisites
-# hadolint ignore=DL3018 -- upstream Alpine packages updated regularly; pin at release cut
+# hadolint ignore=DL3018
 RUN apk update && apk add --no-cache \
     bash \
     netcat-openbsd \
