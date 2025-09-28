@@ -48,6 +48,7 @@ The `CI` workflow enumerates every package under `containers/`, builds them with
 - Set `publish.image` and `publish.tags` so the workflow knows which registry references to push and sign.
 - Provide smoke tests via `tests/` entries; add an optional `tests/e2e.sh` script for dependency bootstrapping (run automatically when present).
 - Keep Dockerfiles and shell scripts lint-clean—`make check`, `shellcheck`, `hadolint`, and `trivy` all run in CI before builds.
+- Create or update `versions.json` (and optionally set `version.component`) so the scheduled upstream check can flag new releases and open issues automatically.
 - Pushing to `main` publishes and cosign-signs images using the registry secrets plus GitHub OIDC; pull requests only build and verify artifacts.
 
 By following this playbook every container package stays well-documented, reproducible, and ready for automated maintenance.

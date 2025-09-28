@@ -135,6 +135,111 @@ def show_info(metadata: Dict[str, Any]) -> None:
     print(json.dumps(metadata, indent=2))
 
 
+def check_upstream(metadata, package_dir):
+    def version_key(value: str):
+        parts = []
+        for token in str(value).replace('-', '.').split('.'):
+            if token.isdigit():
+                parts.append(int(token))
+            else:
+                parts.append(token)
+        return tuple(parts)
+
+    slug = metadata.get('slug') or package_dir.name
+    version_cfg = metadata.get('version', {})
+    strategy = version_cfg.get('strategy', 'manual')
+    current = version_cfg.get('current')
+    if not current:
+        raise SystemExit('version.current must be set for upstream checks')
+
+    result = {
+        'package': slug,
+        'strategy': strategy,
+        'current': current,
+        'status': 'skipped',
+    }
+
+    if strategy == 'http-directory':
+        source = version_cfg.get('source', {}) or {}
+        url = source.get('url')
+        pattern = source.get('regex') or source.get('pattern')
+        timeout = float(source.get('timeout', 10))
+        if not url or not pattern:
+            result['status'] = 'error'
+            result['error'] = 'missing http-directory configuration'
+            print(json.dumps(result))
+            return 0
+        import re
+        from urllib.request import urlopen
+
+        try:
+            with urlopen(url, timeout=timeout) as response:
+                payload = response.read().decode('utf-8', 'ignore')
+        except Exception as exc:  # pylint: disable=broad-except
+            result['status'] = 'error'
+            result['error'] = str(exc)
+            result['source'] = url
+            print(json.dumps(result))
+            return 0
+
+        matches = re.findall(pattern, payload, flags=re.IGNORECASE)
+        if not matches:
+            result['status'] = 'error'
+            result['error'] = 'no matches from http-directory source'
+            result['source'] = url
+            print(json.dumps(result))
+            return 0
+        if isinstance(matches[0], tuple):
+            matches = [m[0] for m in matches]
+        latest = max(matches, key=version_key)
+        result['latest'] = latest
+        result['source'] = url
+        if version_key(latest) > version_key(str(current)):
+            result['status'] = 'update_available'
+            print(json.dumps(result))
+            return 2
+
+        result['status'] = 'up_to_date'
+        print(json.dumps(result))
+        return 0
+
+    component = version_cfg.get('component')
+    candidates = []
+    if component:
+        component_key = str(component).lower()
+        candidates.append(component_key)
+        candidates.append(component_key.replace('-', '_'))
+    if slug:
+        slug_key = str(slug).lower()
+        candidates.append(slug_key)
+        candidates.append(slug_key.replace('-', '_'))
+        candidates.append(slug_key.split('-')[0])
+
+    versions_file = package_dir / 'versions.json'
+    latest = None
+    if versions_file.exists():
+        data = json.loads(versions_file.read_text())
+        for key in candidates:
+            if key and key in data and isinstance(data[key], dict):
+                try:
+                    latest = max(data[key].keys(), key=version_key)
+                except ValueError:
+                    latest = None
+                break
+
+    if latest is None:
+        print(json.dumps(result))
+        return 0
+
+    result['latest'] = latest
+    if version_key(latest) > version_key(str(current)):
+        result['status'] = 'update_available'
+        print(json.dumps(result))
+        return 2
+
+    result['status'] = 'up_to_date'
+    print(json.dumps(result))
+    return 0
 def detect_version(metadata: Dict[str, Any]) -> None:
     version = metadata.get("version", {})
     strategy = version.get("strategy")
@@ -177,6 +282,9 @@ def parse_args() -> argparse.Namespace:
     detect_parser = subparsers.add_parser("detect-version", help="Display version strategy information")
     detect_parser.add_argument("package", help="Package slug")
 
+    check_parser = subparsers.add_parser("check-upstream", help="Check upstream for new versions")
+    check_parser.add_argument("package", help="Package slug")
+
     return parser.parse_args()
 
 
@@ -199,6 +307,8 @@ def main() -> None:
         docker_push(metadata)
     elif args.command == "show":
         show_info(metadata)
+    elif args.command == "check-upstream":
+        sys.exit(check_upstream(metadata, package_dir))
     elif args.command == "detect-version":
         detect_version(metadata)
     else:
