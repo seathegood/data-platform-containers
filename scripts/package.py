@@ -135,6 +135,8 @@ def show_info(metadata: Dict[str, Any]) -> None:
     print(json.dumps(metadata, indent=2))
 
 
+
+
 def check_upstream(metadata, package_dir):
     def version_key(value: str):
         parts = []
@@ -159,6 +161,43 @@ def check_upstream(metadata, package_dir):
         'status': 'skipped',
     }
 
+    if strategy == 'pypi':
+        package_name = str(version_cfg.get('component') or slug).strip()
+        timeout = float(version_cfg.get('timeout', 10))
+        if not package_name:
+            result['status'] = 'error'
+            result['error'] = 'missing PyPI package name'
+            print(json.dumps(result))
+            return 0
+        url = f'https://pypi.org/pypi/{package_name}/json'
+        from urllib.request import urlopen
+        try:
+            with urlopen(url, timeout=timeout) as response:
+                payload = json.loads(response.read().decode('utf-8', 'ignore'))
+        except Exception as exc:  # pylint: disable=broad-except
+            result['status'] = 'error'
+            result['error'] = str(exc)
+            result['source'] = url
+            print(json.dumps(result))
+            return 0
+        latest = payload.get('info', {}).get('version')
+        if not latest:
+            result['status'] = 'error'
+            result['error'] = 'unable to determine latest PyPI version'
+            result['source'] = url
+            print(json.dumps(result))
+            return 0
+        result['latest'] = latest
+        result['source'] = url
+        if version_key(latest) > version_key(str(current)):
+            result['status'] = 'update_available'
+            print(json.dumps(result))
+            return 2
+
+        result['status'] = 'up_to_date'
+        print(json.dumps(result))
+        return 0
+
     if strategy == 'http-directory':
         source = version_cfg.get('source', {}) or {}
         url = source.get('url')
@@ -169,9 +208,8 @@ def check_upstream(metadata, package_dir):
             result['error'] = 'missing http-directory configuration'
             print(json.dumps(result))
             return 0
-        import re
         from urllib.request import urlopen
-
+        import re
         try:
             with urlopen(url, timeout=timeout) as response:
                 payload = response.read().decode('utf-8', 'ignore')
@@ -240,6 +278,7 @@ def check_upstream(metadata, package_dir):
     result['status'] = 'up_to_date'
     print(json.dumps(result))
     return 0
+
 def detect_version(metadata: Dict[str, Any]) -> None:
     version = metadata.get("version", {})
     strategy = version.get("strategy")

@@ -1,0 +1,4 @@
+# Add additional Airflow provider or library dependencies below.
+# Pin each dependency so it remains compatible with the Airflow constraints file.
+# Example:
+# apache-airflow-providers-amazon==8.13.0
