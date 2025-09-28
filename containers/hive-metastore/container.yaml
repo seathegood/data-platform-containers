@@ -10,8 +10,12 @@ links:
   source: https://github.com/apache/hive
 license: Apache-2.0
 version:
-  strategy: manual
+  strategy: http-directory
   current: "4.1.0"
+  component: hive
+  source:
+    url: https://dlcdn.apache.org/hive/
+    regex: 'apache-hive-([0-9]+\.[0-9]+\.[0-9]+)-bin\.tar\.gz'
   notes: "Track http://dlcdn.apache.org/hive/ for new standalone metastore drops."
 runtime:
   base_image: "eclipse-temurin:21-jdk-alpine"

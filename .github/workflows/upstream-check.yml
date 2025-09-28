@@ -1,0 +1,117 @@
+name: Upstream Check
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  determine-packages:
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.packages.outputs.packages }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+      - name: Enumerate packages
+        id: packages
+        run: |
+          set -euo pipefail
+          packages=$(./scripts/package.py | awk '/^-/{print $2}' | grep -v '^_')
+          PACKAGES="$packages" python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          pkgs = [p for p in os.environ.get('PACKAGES', '').splitlines() if p]
+          print(f"packages={json.dumps(pkgs)}")
+          PY
+
+  check:
+    needs: determine-packages
+    if: ${{ needs.determine-packages.outputs.packages != '[]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pyyaml
+      - name: Check upstream
+        id: upstream
+        env:
+          PACKAGES_JSON: ${{ needs.determine-packages.outputs.packages }}
+        run: python3 scripts/check_upstream_ci.py
+      - name: Summarize results
+        env:
+          RESULTS_JSON: ${{ steps.upstream.outputs.results }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+
+          print('#### Upstream check')
+          results = json.loads(os.environ.get('RESULTS_JSON') or '[]')
+          if not results:
+              print('No packages evaluated.')
+          else:
+              for entry in results:
+                  pkg = entry.get('package')
+                  status = entry.get('status')
+                  latest = entry.get('latest')
+                  current = entry.get('current')
+                  line = f"- **{pkg}**: {status}"
+                  if latest:
+                      line += f" (latest {latest}, current {current})"
+                  print(line)
+          PY
+      - name: Create or update issue
+        if: ${{ steps.upstream.outputs.updates_count != '0' }}
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        env:
+          UPDATES_JSON: ${{ steps.upstream.outputs.updates }}
+        with:
+          script: |
+            const updates = JSON.parse(process.env.UPDATES_JSON || '[]');
+            const title = 'Upstream updates available';
+            if (!updates.length) {
+              core.info('No updates to report.');
+              return;
+            }
+            const lines = updates.map(u => {
+              const pkg = u.package || 'unknown';
+              const current = u.current || 'unknown';
+              const latest = u.latest || 'unknown';
+              return `- **${pkg}**: current ${current}, latest ${latest}`;
+            });
+            const body = `The scheduled upstream check detected new releases:\n\n${lines.join('\n')}\n\nPlease update the corresponding container metadata and Dockerfiles.`;
+            const { owner, repo } = context.repo;
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              labels: 'upstream-update'
+            });
+            if (existing.length) {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing[0].number,
+                title,
+                body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels: ['upstream-update']
+              });
+            }
