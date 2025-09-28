@@ -9,6 +9,7 @@ FROM apache/airflow:${AIRFLOW_VERSION}-python${PYTHON_VERSION}
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 
 USER root
+# hadolint ignore=DL3008 -- base image maintained upstream; OS packages pinned during release process
 RUN apt-get update \ 
     && apt-get install -y --no-install-recommends \ 
         build-essential \ 
