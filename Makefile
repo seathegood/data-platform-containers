@@ -7,7 +7,7 @@ list:
 
 build:
 	@test -n "$(PACKAGE)" || (echo "Set PACKAGE=<slug>" && exit 1)
-	./scripts/package.py build $(PACKAGE)
+	./scripts/package.py build $(PACKAGE)$(if $(PACKAGE_PLATFORMS), --platform $(PACKAGE_PLATFORMS),)
 
 test:
 	@test -n "$(PACKAGE)" || (echo "Set PACKAGE=<slug>" && exit 1)
@@ -33,4 +33,7 @@ smoke-all:
 	done
 
 check:
-	./scripts/package.py show hive-metastore >/dev/null
+	@for pkg in $(shell ./scripts/package.py | awk '/^-/{print $$2}' | grep -v '^_'); do \
+		printf 'Checking %s\n' $$pkg; \
+		source .venv/bin/activate >/dev/null 2>&1 && ./scripts/package.py show $$pkg >/dev/null; \
+	done
