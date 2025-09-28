@@ -13,9 +13,9 @@ METASTORE_IMAGE="${E2E_IMAGE:-docker.io/seathegood/hive-metastore:latest}"
 cleanup() {
   status=$?
   if [ "$status" -ne 0 ]; then
-    echo "\n==> Hive Metastore logs"
+    printf '\n==> Hive Metastore logs\n'
     docker logs "$METASTORE_CONTAINER" 2>/dev/null || true
-    echo "\n==> Postgres logs"
+    printf '\n==> Postgres logs\n'
     docker logs "$POSTGRES_CONTAINER" 2>/dev/null || true
   fi
   docker rm -f "$METASTORE_CONTAINER" >/dev/null 2>&1 || true
@@ -53,7 +53,7 @@ if ! docker ps --filter "name=$POSTGRES_CONTAINER" --format '{{.Names}}' | grep 
 fi
 
 echo "Waiting for PostgreSQL to become ready..."
-for attempt in $(seq 1 30); do
+for _ in $(seq 1 30); do
   if docker exec "$POSTGRES_CONTAINER" pg_isready -U metastore >/dev/null 2>&1; then
     POSTGRES_READY=1
     break
@@ -83,7 +83,7 @@ if ! docker ps --filter "name=$METASTORE_CONTAINER" --format '{{.Names}}' | grep
 fi
 
 echo "Waiting for Hive Metastore health check..."
-for attempt in $(seq 1 30); do
+for _ in $(seq 1 30); do
   status=$(docker inspect --format '{{if .State}}{{.State.Health.Status}}{{end}}' "$METASTORE_CONTAINER" 2>/dev/null || echo "starting")
   if [ "$status" = "healthy" ]; then
     METASTORE_HEALTHY=1

@@ -1,15 +1,15 @@
-#!/bin/sh
+#!/usr/bin/env bash
 set -euo pipefail
 
 echo "Starting Hive Metastore container..."
 rm -f /tmp/metastore-ready
 
 # Set required defaults and paths
-export HADOOP_HOME=${HADOOP_HOME:-/opt/hadoop}
-export HADOOP_CONF_DIR=${HADOOP_CONF_DIR:-$HADOOP_HOME/conf}
-export HADOOP_HDFS_HOME=${HADOOP_HDFS_HOME:-/opt/hadoop}
-export HIVE_HOME=${HIVE_HOME:-/opt/hive}
-export HIVE_CONF_DIR=${HIVE_CONF_DIR:-$HIVE_HOME/conf}
+export HADOOP_HOME="${HADOOP_HOME:-/opt/hadoop}"
+export HADOOP_CONF_DIR="${HADOOP_CONF_DIR:-$HADOOP_HOME/conf}"
+export HADOOP_HDFS_HOME="${HADOOP_HDFS_HOME:-/opt/hadoop}"
+export HIVE_HOME="${HIVE_HOME:-/opt/hive}"
+export HIVE_CONF_DIR="${HIVE_CONF_DIR:-$HIVE_HOME/conf}"
 export PATH="$HADOOP_HOME/bin:$PATH"
 
 # Validate required environment variables
