@@ -104,6 +104,16 @@ def run_tests(package_dir: Path, metadata: Dict[str, Any], args: argparse.Namesp
         print("no tests defined; skipping")
         return
 
+    env = os.environ.copy()
+    venv_bin = ROOT / ".venv" / "bin"
+    if venv_bin.is_dir():
+        path = env.get("PATH", "")
+        path_entries = [p for p in path.split(os.pathsep) if p]
+        venv_str = str(venv_bin)
+        if venv_str not in path_entries:
+            env["PATH"] = os.pathsep.join([venv_str, *path_entries]) if path_entries else venv_str
+        env.setdefault("VIRTUAL_ENV", str(venv_bin.parent))
+
     for test in tests:
         name = test.get("name") or "unnamed"
         command = test.get("command")
@@ -111,7 +121,7 @@ def run_tests(package_dir: Path, metadata: Dict[str, Any], args: argparse.Namesp
             print(f"Skipping test '{name}' with no command")
             continue
         print(f"→ running test '{name}'")
-        subprocess.run(["bash", "-lc", command], check=True, cwd=package_dir, env=os.environ.copy())
+        subprocess.run(["bash", "-c", command], check=True, cwd=package_dir, env=env)
 
 
 def docker_push(metadata: Dict[str, Any]) -> None:
