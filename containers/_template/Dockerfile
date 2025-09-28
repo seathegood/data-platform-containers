@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1.6
 
+# hadolint ignore=DL3006 -- base image overridden per-package
 ARG BASE_IMAGE=ubuntu:22.04
 FROM ${BASE_IMAGE}
 
@@ -14,7 +15,8 @@ ENV PACKAGE_NAME="${PACKAGE_NAME}" \
     PACKAGE_VERSION="${PACKAGE_VERSION}"
 
 # Install OS dependencies here. Split steps so caching works well.
-RUN --mount=type=cache,target=/var/cache/apt <<'EOS'
+# hadolint ignore=DL3008 -- downstream packages must choose appropriate pinned versions
+RUN --mount=type=cache,target=/var/cache/apt bash <<'EOS'
 set -euo pipefail
 apt-get update
 apt-get install -y --no-install-recommends curl ca-certificates
@@ -22,7 +24,7 @@ rm -rf /var/lib/apt/lists/*
 EOS
 
 # Download the upstream artifact. Replace with logic appropriate for the package.
-RUN --mount=type=cache,target=/tmp/downloads <<'EOS'
+RUN --mount=type=cache,target=/tmp/downloads bash <<'EOS'
 set -euo pipefail
 mkdir -p /tmp/downloads
 curl -fsSL "${UPSTREAM_URI}" -o /tmp/downloads/${PACKAGE_NAME}-${PACKAGE_VERSION}
