@@ -44,7 +44,6 @@ build:
   args:
     AIRFLOW_VERSION: "!version.current"
     PYTHON_VERSION: "3.10"
-    CONSTRAINTS_URL: "https://raw.githubusercontent.com/apache/airflow/constraints-!version.current/constraints-3.10.txt"
 tests:
   - name: metadata
     command: "./tests/metadata.py"

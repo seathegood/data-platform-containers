@@ -2,9 +2,11 @@
 
 ARG AIRFLOW_VERSION=2.9.1
 ARG PYTHON_VERSION=3.10
-ARG CONSTRAINTS_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
 
 FROM apache/airflow:${AIRFLOW_VERSION}-python${PYTHON_VERSION}
+
+ARG AIRFLOW_VERSION
+ARG PYTHON_VERSION
 
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 
@@ -30,15 +32,19 @@ RUN apt-get update \
 
 COPY requirements.txt /opt/airflow/requirements.txt
 
-ENV CONSTRAINTS_FILE=${CONSTRAINTS_URL} \
-    AIRFLOW__CORE__LOAD_EXAMPLES=False
+ENV CONSTRAINTS_FILE="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt" \
+    AIRFLOW__CORE__LOAD_EXAMPLES=False \
+    PIP_DEFAULT_TIMEOUT=60
 
 RUN --mount=type=cache,target=/root/.cache/pip \
+    CONSTRAINTS_PATH=$(mktemp) && \
+    curl -sSL --retry 5 --retry-delay 5 --fail "$CONSTRAINTS_FILE" -o "$CONSTRAINTS_PATH" && \
     if grep -qE "^[^#]" /opt/airflow/requirements.txt; then \
-        python -m pip install --no-cache-dir --constraint "${CONSTRAINTS_FILE}" -r /opt/airflow/requirements.txt; \
+        python -m pip install --no-cache-dir --constraint "$CONSTRAINTS_PATH" -r /opt/airflow/requirements.txt; \
     else \
         echo "No additional Python dependencies specified."; \
-    fi
+    fi && \
+    rm -f "$CONSTRAINTS_PATH"
 
 USER airflow
 

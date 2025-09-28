@@ -83,18 +83,37 @@ def docker_build(package_dir: Path, metadata: Dict[str, Any], args: argparse.Nam
     tags = compute_tags(metadata)
     build_args = flatten_build_args(metadata)
 
-    cmd = ["docker", "build", str(context_dir), "-f", str(package_dir / dockerfile)]
+    platforms = args.platform or os.environ.get("PACKAGE_PLATFORMS")
+    use_buildx = bool(platforms)
+
+    if use_buildx:
+        cmd = ["docker", "buildx", "build"]
+    else:
+        cmd = ["docker", "build"]
+
+    cmd.extend(["-f", str(package_dir / dockerfile)])
+
+    if platforms:
+        cmd.extend(["--platform", platforms])
+
+    if use_buildx:
+        multi_arch = "," in platforms if platforms else False
+        if os.environ.get("PACKAGE_PUSH"):
+            cmd.append("--push")
+        elif not multi_arch:
+            cmd.append("--load")
+        else:
+            raise SystemExit("Multi-architecture builds require PACKAGE_PUSH=1 to push the image")
 
     for tag in tags:
         cmd.extend(["-t", tag])
 
-    if args.platform:
-        cmd.extend(["--platform", args.platform])
-
     for key, value in build_args.items():
         cmd.extend(["--build-arg", f"{key}={value}"])
 
-    print("→ docker", " ".join(cmd[1:]))
+    cmd.append(str(context_dir))
+
+    print("→", " ".join(cmd))
     subprocess.run(cmd, check=True, cwd=package_dir)
 
 
