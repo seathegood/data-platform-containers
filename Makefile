@@ -35,5 +35,5 @@ smoke-all:
 check:
 	@for pkg in $(shell ./scripts/package.py | awk '/^-/{print $$2}' | grep -v '^_'); do \
 		printf 'Checking %s\n' $$pkg; \
-		source .venv/bin/activate >/dev/null 2>&1 && ./scripts/package.py show $$pkg >/dev/null; \
+		./scripts/package.py show $$pkg >/dev/null; \
 	done
