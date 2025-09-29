@@ -1,0 +1,3 @@
+# Additional Python libraries for Spark jobs can be declared here.
+# Example (kept commented to avoid install by default):
+# deltalake==0.16.3

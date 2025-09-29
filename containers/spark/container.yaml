@@ -1,0 +1,61 @@
+name: "Apache Spark Runtime"
+slug: "spark"
+summary: "Slim Spark 3.5 runtime with Iceberg, Hadoop AWS, and common Python dependencies."
+maintainers:
+  - name: Platform Containers Team
+    email: containers@example.com
+links:
+  homepage: https://spark.apache.org/
+  source: https://github.com/apache/spark
+  documentation: https://spark.apache.org/docs/latest/
+license: Apache-2.0
+version:
+  strategy: http-directory
+  current: "3.5.1"
+  component: spark
+  source:
+    url: https://archive.apache.org/dist/spark/
+    regex: 'spark-([0-9]+\.[0-9]+\.[0-9]+)/'
+  notes: "Use the Apache archive or mirror for fetching Spark releases."
+runtime:
+  base_image: "openjdk:17-slim"
+  user: "root"
+  workdir: "/opt/spark"
+  entrypoint:
+    - "/usr/bin/tini"
+    - "--"
+    - "/usr/local/bin/entrypoint.sh"
+  cmd:
+    - "--help"
+  env:
+    - name: SPARK_HOME
+      default: "/opt/spark"
+      description: "Spark installation directory."
+    - name: AIRFLOW__CORE__LOAD_EXAMPLES
+      default: "False"
+      description: "Placeholder environment variable for consistency."
+  volumes:
+    - name: conf
+      path: /opt/conf
+build:
+  context: "."
+  dockerfile: "Dockerfile"
+  args:
+    SPARK_VERSION: "!version.current"
+    HADOOP_VERSION: "3.3.4"
+    ICEBERG_VERSION: "1.6.0"
+    AWS_SDK_VERSION: "2.25.50"
+    HADOOP_AWS_VERSION: "3.3.4"
+tests:
+  - name: metadata
+    command: "./tests/metadata.py"
+publish:
+  image: "docker.io/seathegood/spark-runtime"
+  tags:
+    - latest
+    - "!version.current"
+  labels:
+    org.opencontainers.image.title: "!name"
+    org.opencontainers.image.version: "!version.current"
+    org.opencontainers.image.description: "!summary"
+    org.opencontainers.image.documentation: "https://spark.apache.org/docs/latest/"
