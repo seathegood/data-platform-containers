@@ -33,7 +33,7 @@ RUN apt-get update \
         procps \
         tini \
         libgomp1 \
-        libsnappy1 \
+        libsnappy1v5 \
         libzstd1 \
         libjemalloc2 \
     && rm -rf /var/lib/apt/lists/*
