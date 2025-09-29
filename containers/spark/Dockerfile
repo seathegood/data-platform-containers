@@ -56,16 +56,13 @@ COPY requirements.txt /tmp/requirements.txt
 RUN if grep -qE "^[^#]" /tmp/requirements.txt; then \
         python3 -m pip install --no-cache-dir -r /tmp/requirements.txt; \
     fi \
-    && rm -f /tmp/requirements.txt
-
-RUN python3 -m pip install --no-cache-dir \
+    && python3 -m pip install --no-cache-dir \
         pyspark==${SPARK_VERSION} \
         pandas==2.1.4 \
         pyarrow==14.0.2 \
-        fastparquet==2024.2.0
-
-# Create configuration directory
-RUN mkdir -p /opt/conf
+        fastparquet==2024.2.0 \
+    && rm -f /tmp/requirements.txt \
+    && mkdir -p /opt/conf
 
 # Entry point and healthcheck scripts
 COPY files/entrypoint.sh /usr/local/bin/entrypoint.sh
