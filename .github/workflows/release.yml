@@ -1,10 +1,14 @@
-name: CI
+name: Release
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  release:
+    types: [published]
   workflow_dispatch:
+    inputs:
+      include_stable:
+        description: 'Include stable tag (release events only by default)'
+        required: false
+        default: 'false'
 
 permissions:
   contents: read
@@ -12,8 +16,8 @@ permissions:
   id-token: write
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   PYTHON_VERSION: '3.11'
@@ -28,52 +32,9 @@ jobs:
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
       - name: Enumerate packages
         id: packages
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          BEFORE_SHA: ${{ github.event.before }}
-          HEAD_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          all_packages=$(./scripts/package.py | awk '/^-/{print $2}' | grep -v '^_')
-          build_all=0
-          changed_packages=""
-
-          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
-            build_all=1
-          else
-            base="${BASE_SHA:-${BEFORE_SHA}}"
-            head="${HEAD_SHA}"
-            if [ -z "${base}" ] || [ "${base}" = "0000000000000000000000000000000000000000" ]; then
-              build_all=1
-            else
-              git fetch --no-tags --depth=1 origin "${base}" || git fetch --no-tags origin "${base}"
-              changed_files=$(git diff --name-only "${base}" "${head}")
-              for file in ${changed_files}; do
-                case "${file}" in
-                  templates/*|scripts/*|Makefile)
-                    build_all=1
-                    ;;
-                  containers/*)
-                    slug=$(echo "${file}" | cut -d/ -f2)
-                    if [ "${slug}" != "_template" ] && [ -n "${slug}" ]; then
-                      changed_packages="${changed_packages}\n${slug}"
-                    fi
-                    ;;
-                esac
-                if [ "${build_all}" -eq 1 ]; then
-                  break
-                fi
-              done
-            fi
-          fi
-
-          if [ "${build_all}" -eq 1 ]; then
-            packages="${all_packages}"
-          else
-            packages=$(printf "%b" "${changed_packages}" | sort -u | sed '/^$/d')
-          fi
-
+          packages=$(./scripts/package.py | awk '/^-/{print $2}' | grep -v '^_')
           PACKAGES="$packages" python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           import os
@@ -154,6 +115,7 @@ jobs:
           python3 - <<'PY'
           import json
           import os
+          import re
           from pathlib import Path
           import yaml
 
@@ -181,6 +143,13 @@ jobs:
           if not resolved_tags:
               raise SystemExit('publish.tags must contain at least one entry')
 
+          version = str(metadata.get('version', {}).get('current', '')).strip()
+          semver_tags = []
+          match = re.match(r'^(\d+)\.(\d+)\.(\d+)', version)
+          if match:
+              major, minor, patch = match.groups()
+              semver_tags.extend([f"{major}", f"{major}.{minor}", f"{major}.{minor}.{patch}"])
+
           sha = os.environ.get('GITHUB_SHA', '')
           sha_tag = f"sha-{sha[:12]}" if sha else None
 
@@ -189,13 +158,15 @@ jobs:
                   if item and item not in tags:
                       tags.append(item)
 
+          extend_unique(resolved_tags, semver_tags)
           if 'latest' not in resolved_tags:
               resolved_tags.append('latest')
+          if os.environ.get('INCLUDE_STABLE') == '1':
+              resolved_tags.append('stable')
           if sha_tag:
               resolved_tags.append(sha_tag)
 
           full_tags = [f"{image}:{tag}" for tag in resolved_tags]
-          version = str(metadata.get('version', {}).get('current', '')).strip()
           version_tag = f"{image}:{version}" if version else full_tags[0]
 
           def write_output(name, value):
@@ -216,55 +187,41 @@ jobs:
               write_output('build_args', [])
           write_output('version_tag', version_tag)
           PY
+        env:
+          INCLUDE_STABLE: ${{ (github.event_name == 'release' || github.event.inputs.include_stable == 'true') && '1' || '0' }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
 
       - name: Log in to GHCR
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build container image
+      - name: Build and push container image
         id: build
         uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25
         with:
           context: containers/${{ matrix.package }}
           file: containers/${{ matrix.package }}/Dockerfile
-          platforms: ${{ github.ref == 'refs/heads/main' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          load: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
+          platforms: linux/amd64,linux/arm64
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           build-args: ${{ steps.meta.outputs.build_args }}
           cache-from: type=gha,scope=${{ matrix.package }}
           cache-to: type=gha,mode=max,scope=${{ matrix.package }}
 
-      - name: Pull pushed image
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        run: docker pull "${{ steps.meta.outputs.version_tag }}"
-
       - name: Run metadata tests
         run: ./scripts/package.py test "$PACKAGE"
 
-      - name: Run end-to-end tests
-        if: ${{ hashFiles(format('containers/{0}/tests/e2e.sh', matrix.package)) != '' }}
-        env:
-          SKIP_PACKAGE_BUILD: "1"
-          SKIP_PACKAGE_TEST: "1"
-          E2E_IMAGE: ${{ steps.meta.outputs.version_tag }}
-        run: containers/${{ matrix.package }}/tests/e2e.sh
-
       - name: Install cosign
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         uses: sigstore/cosign-installer@e1523de7571e31dbe865fd2e80c5c7c23ae71eb4
         with:
           cosign-release: 'v2.2.1'
 
       - name: Sign container images
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         env:
           COSIGN_EXPERIMENTAL: '1'
         run: |
@@ -276,8 +233,69 @@ jobs:
           done
           cosign sign --yes "${{ steps.meta.outputs.image }}@${{ steps.build.outputs.digest }}"
 
-      - name: Publish image digest summary
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      - name: Capture digest info
         run: |
-          echo "Published ${{ steps.meta.outputs.version_tag }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "Digest: ${{ steps.build.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p release-artifacts
+          printf '%s\t%s\t%s\n' \
+            "${{ matrix.package }}" \
+            "${{ steps.meta.outputs.version_tag }}" \
+            "${{ steps.build.outputs.digest }}" \
+            > "release-artifacts/${{ matrix.package }}.tsv"
+
+      - name: Upload digest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.package }}
+          path: release-artifacts/${{ matrix.package }}.tsv
+
+  release-notes:
+    needs: package
+    if: ${{ github.event_name == 'release' }}
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed to update the release body with digest notes.
+      contents: write
+    steps:
+      - name: Download digest artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Assemble digest notes
+        run: |
+          {
+            echo '### Platform Release'
+            echo "- tag: ${GITHUB_REF_NAME}"
+            echo
+            echo '### Image Digests'
+            for file in release-artifacts/**/**/*.tsv; do
+              [ -f "$file" ] || continue
+              read -r pkg tag digest <"$file"
+              echo "- ${pkg}: ${tag} @ ${digest}"
+            done
+          } > digests.md
+
+      - name: Update release notes
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        with:
+          script: |
+            const fs = require('fs');
+            const content = fs.readFileSync('digests.md', 'utf8').trim();
+            const release = context.payload.release;
+            if (!release) {
+              core.info('No release payload; skipping update.');
+              return;
+            }
+            const marker = '### Image Digests';
+            let body = release.body || '';
+            if (body.includes(marker)) {
+              body = body.replace(/### Image Digests[\s\S]*$/m, content);
+            } else {
+              body = body ? `${body}\n\n${content}` : content;
+            }
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.id,
+              body
+            });

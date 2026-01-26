@@ -7,8 +7,8 @@ on:
 
 permissions:
   contents: read
-  issues: write
-  pull-requests: write
+  packages: write
+  id-token: write
 
 jobs:
   determine-packages:
@@ -34,6 +34,10 @@ jobs:
     needs: determine-packages
     if: ${{ needs.determine-packages.outputs.packages != '[]' }}
     runs-on: ubuntu-latest
+    permissions:
+      # Needed to commit updates and open PRs.
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
@@ -43,6 +47,8 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: pip install pyyaml
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
       - name: Check upstream
         id: upstream
         env:
@@ -71,47 +77,61 @@ jobs:
                       line += f" (latest {latest}, current {current})"
                   print(line)
           PY
-      - name: Create or update issue
+      - name: Apply upstream updates
         if: ${{ steps.upstream.outputs.updates_count != '0' }}
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         env:
           UPDATES_JSON: ${{ steps.upstream.outputs.updates }}
+        run: python3 scripts/apply_upstream_updates.py
+
+      - name: Detect changes
+        if: ${{ steps.upstream.outputs.updates_count != '0' }}
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Render PR body
+        if: ${{ steps.upstream.outputs.updates_count != '0' && steps.changes.outputs.changed == 'true' }}
+        env:
+          UPDATES_JSON: ${{ steps.upstream.outputs.updates }}
+        run: |
+          python3 - <<'PY' > pr-body.md
+          import json
+          import os
+
+          updates = json.loads(os.environ.get('UPDATES_JSON') or '[]')
+          lines = []
+          for entry in updates:
+              pkg = entry.get('package') or 'unknown'
+              current = entry.get('current') or 'unknown'
+              latest = entry.get('latest') or 'unknown'
+              extra = ""
+              if pkg == "spark":
+                  flavor = entry.get("iceberg_runtime_flavor")
+                  iceberg = entry.get("iceberg_version")
+                  if flavor or iceberg:
+                      extra = f" (iceberg {iceberg or 'unknown'}, flavor {flavor or 'unknown'})"
+              lines.append(f"- **{pkg}**: {current} → {latest}{extra}")
+
+          body = [
+              "The scheduled upstream check detected new releases:",
+              "",
+              *lines,
+              "",
+              "Please review and adjust Dockerfiles/build args as needed (e.g., Spark Iceberg runtime flavor).",
+          ]
+          print("\n".join(body))
+          PY
+
+      - name: Create or update PR
+        if: ${{ steps.upstream.outputs.updates_count != '0' && steps.changes.outputs.changed == 'true' }}
+        uses: peter-evans/create-pull-request@v6
         with:
-          script: |
-            const updates = JSON.parse(process.env.UPDATES_JSON || '[]');
-            const title = 'Upstream updates available';
-            if (!updates.length) {
-              core.info('No updates to report.');
-              return;
-            }
-            const lines = updates.map(u => {
-              const pkg = u.package || 'unknown';
-              const current = u.current || 'unknown';
-              const latest = u.latest || 'unknown';
-              return `- **${pkg}**: current ${current}, latest ${latest}`;
-            });
-            const body = `The scheduled upstream check detected new releases:\n\n${lines.join('\n')}\n\nPlease update the corresponding container metadata and Dockerfiles.`;
-            const { owner, repo } = context.repo;
-            const existing = await github.paginate(github.rest.issues.listForRepo, {
-              owner,
-              repo,
-              state: 'open',
-              labels: 'upstream-update'
-            });
-            if (existing.length) {
-              await github.rest.issues.update({
-                owner,
-                repo,
-                issue_number: existing[0].number,
-                title,
-                body
-              });
-            } else {
-              await github.rest.issues.create({
-                owner,
-                repo,
-                title,
-                body,
-                labels: ['upstream-update']
-              });
-            }
+          commit-message: "chore: apply upstream version updates"
+          title: "Upstream version updates"
+          body-path: pr-body.md
+          branch: upstream-updates
+          labels: upstream-update
