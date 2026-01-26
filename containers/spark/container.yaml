@@ -53,7 +53,7 @@ build:
     GOOGLEAPIS_COMMON_PROTOS_VERSION: "1.71.0"
     ZSTANDARD_VERSION: "0.25.0"
     EXTRA_JARS_URLS: ""
-    OCI_SOURCE: "https://github.com/mrossco/data-platform-containers"
+    OCI_SOURCE: "https://github.com/seathegood/data-platform-containers"
     OCI_REVISION: "!version.current"
     JAXB_API_VERSION: "2.3.1"
     JAXB_IMPL_VERSION: "2.3.3"
@@ -68,7 +68,7 @@ tests:
   - name: compose-smoke
     command: "bash ./tests/compose_smoke.sh"
 publish:
-  image: "ghcr.io/mrossco/data-platform-containers/spark-runtime"
+  image: "ghcr.io/seathegood/data-platform-containers/spark-runtime"
   tags:
     - latest
     - "!version.current"
@@ -77,5 +77,5 @@ publish:
     org.opencontainers.image.version: "!version.current"
     org.opencontainers.image.description: "!summary"
     org.opencontainers.image.documentation: "https://spark.apache.org/docs/latest/"
-    org.opencontainers.image.source: "https://github.com/mrossco/data-platform-containers"
+    org.opencontainers.image.source: "https://github.com/seathegood/data-platform-containers"
     org.opencontainers.image.revision: "!version.current"

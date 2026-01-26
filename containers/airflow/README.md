@@ -15,7 +15,7 @@ avoid masking `/opt/airflow/webserver_config.py`.
 
 ```bash
 make build PACKAGE=airflow
-docker tag ghcr.io/mrossco/data-platform-containers/airflow-runtime:latest airflow-runtime:local
+docker tag ghcr.io/seathegood/data-platform-containers/airflow-runtime:latest airflow-runtime:local
 docker compose -f docker-compose.airflow.local.yml up
 ```
 
