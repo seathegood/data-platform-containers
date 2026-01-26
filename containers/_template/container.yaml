@@ -12,9 +12,9 @@ license: Apache-2.0
 version:
   strategy: manual
   current: "0.0.0"
-  notes: "Replace with the upstream version that this container packages."
+  notes: "Replace with the upstream version packaged here; describe how to find updates."
 runtime:
-  base_image: "ubuntu:22.04"
+  base_image: "ubuntu:22.04@sha256:REPLACE_ME_WITH_DIGEST"
   user: 1000:1000
   workdir: "/opt/app"
   entrypoint:
@@ -39,9 +39,11 @@ build:
   files:
     - source: "files/"
       destination: "/opt/app/files"
-tests: []
+tests:
+  - name: metadata
+    command: "./tests/metadata.py"
 publish:
-  image: "ghcr.io/your-org/example"
+  image: "ghcr.io/seathegood/data-platform-containers/example"
   tags:
     - latest
     - "!version.current"
