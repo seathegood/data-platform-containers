@@ -24,9 +24,9 @@ RUN apk update && apk add --no-cache \
 
 WORKDIR /build
 
-# Download and verify Hive
-RUN wget -q https://dlcdn.apache.org/hive/hive-${HIVE_VERSION}/apache-hive-${HIVE_VERSION}-bin.tar.gz && \
-    wget -q https://dlcdn.apache.org/hive/hive-${HIVE_VERSION}/apache-hive-${HIVE_VERSION}-bin.tar.gz.sha256 && \
+# Download and verify Hive (use archive mirror to avoid mirror rotation/expiry)
+RUN wget -q https://archive.apache.org/dist/hive/hive-${HIVE_VERSION}/apache-hive-${HIVE_VERSION}-bin.tar.gz && \
+    wget -q https://archive.apache.org/dist/hive/hive-${HIVE_VERSION}/apache-hive-${HIVE_VERSION}-bin.tar.gz.sha256 && \
     sha256sum -c apache-hive-${HIVE_VERSION}-bin.tar.gz.sha256 && \
     tar -xzf apache-hive-${HIVE_VERSION}-bin.tar.gz
 
