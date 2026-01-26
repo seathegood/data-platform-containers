@@ -5,6 +5,7 @@
 # Example:
 # apache-airflow-providers-amazon
 apache-airflow-providers-amazon
+apache-airflow-providers-fab
 apache-airflow-providers-postgres
 apache-airflow-providers-snowflake
 
