@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.6
 
-ARG SPARK_VERSION=3.5.1
+ARG SPARK_VERSION=4.0.1
 ARG HADOOP_VERSION=3.3.4
 ARG ICEBERG_VERSION=1.6.0
 ARG AWS_SDK_VERSION=2.25.50
 ARG HADOOP_AWS_VERSION=3.3.4
 
-FROM openjdk:17-slim
+FROM eclipse-temurin:17-jre-jammy
 
 ARG SPARK_VERSION
 ARG HADOOP_VERSION
@@ -18,7 +18,7 @@ SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 
 ENV DEBIAN_FRONTEND=noninteractive \
     SPARK_HOME=/opt/spark \
-    JAVA_HOME=/usr/local/openjdk-17 \
+    JAVA_HOME=/opt/java/openjdk \
     PYTHONUNBUFFERED=1 \
     PATH=/opt/spark/bin:/opt/spark/sbin:$PATH
 
@@ -47,7 +47,7 @@ RUN curl -fsSL "https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spa
 
 # Add Iceberg runtime and AWS dependencies
 RUN mkdir -p "$SPARK_HOME/jars" \
-    && curl -fsSL "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-3.5_2.12/${ICEBERG_VERSION}/iceberg-spark-runtime-3.5_2.12-${ICEBERG_VERSION}.jar" -o "$SPARK_HOME/jars/iceberg-spark-runtime-3.5_2.12-${ICEBERG_VERSION}.jar" \
+    && curl -fsSL "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-4.0_2.12/${ICEBERG_VERSION}/iceberg-spark-runtime-4.0_2.12-${ICEBERG_VERSION}.jar" -o "$SPARK_HOME/jars/iceberg-spark-runtime-4.0_2.12-${ICEBERG_VERSION}.jar" \
     && curl -fsSL "https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/${HADOOP_AWS_VERSION}/hadoop-aws-${HADOOP_AWS_VERSION}.jar" -o "$SPARK_HOME/jars/hadoop-aws-${HADOOP_AWS_VERSION}.jar" \
     && curl -fsSL "https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/${AWS_SDK_VERSION}/bundle-${AWS_SDK_VERSION}.jar" -o "$SPARK_HOME/jars/aws-sdk-bundle-${AWS_SDK_VERSION}.jar"
 

@@ -11,7 +11,7 @@ This repository curates the container images that power a self-hosted, productio
 | Container | Purpose | Highlights |
 | --- | --- | --- |
 | `airflow` | Workflow orchestration tier | Based on `apache/airflow`, with pinned constraints, optional extras, and Git-friendly DAG volume mounts. |
-| `spark` | Batch and streaming compute engine | Ships Spark 3.5, Iceberg runtime, AWS connectors, and a tiny entrypoint for `spark-submit` automation. |
+| `spark` | Batch and streaming compute engine | Ships Spark 4.0, Iceberg runtime, AWS connectors, and a tiny entrypoint for `spark-submit` automation. |
 | `hive-metastore` | Central Iceberg/Hive catalog service | Hardened multi-stage build, PostgreSQL schema bootstrapper, and health checks for readiness probes. |
 
 Community contributions live under `containers/_template` and follow the same release and testing conventions. See the wiki entry [Container Development Methodologies](docs/wiki/container-development-methodologies.md) for deeper implementation patterns.
