@@ -73,7 +73,7 @@ tests:
   - name: metadata
     command: "./tests/metadata.py"
 publish:
-  image: "docker.io/seathegood/hive-metastore"
+  image: "ghcr.io/mrossco/data-platform-containers/hive-metastore"
   tags:
     - latest
     - "!version.current"

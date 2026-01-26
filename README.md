@@ -1,11 +1,12 @@
 # Data Platform Containers
 
-This repository curates the container images that power a self-hosted, production-ready data plane grounded in open standards. Each image bundles the operational glue, security hardening, and interoperability settings required to run Apache-centric analytics workloads in any Kubernetes or Docker environment.
+This repository curates container images that power a self-hosted, production-ready data plane grounded in open standards. Each image bundles the operational glue, security hardening, and interoperability settings required to run Apache-centric analytics workloads in any Kubernetes or Docker environment. The repo also serves as a portfolio piece: the workflows, tagging strategy, and documentation are written to explain the “why” as much as the “what.”
 
 ## Why It Exists
-- Deliver opinionated, supportable images for Airflow, Spark, and Hive Metastore without relying on closed SaaS offerings.
-- Keep the platform portable across clouds by leaning on Apache open standards (Iceberg, Hive catalog, Spark SQL, Airflow DAGs).
+- Deliver opinionated, supportable images for Airflow, Spark, and Hive Metastore without closed SaaS dependencies.
+- Keep the platform portable across clouds by leaning on Apache open standards (Iceberg, Spark SQL, Airflow DAGs) and self-hosted components.
 - Share a single build-and-release toolchain so upgrades, compliance scans, and provenance metadata stay consistent across containers.
+- Document the concepts (tagging policy, GHCR usage, change detection) to show how a small platform team can run a repeatable supply chain.
 
 ## Container Catalog
 | Container | Purpose | Highlights |
@@ -39,16 +40,25 @@ make test PACKAGE=spark
 
 # Build everything (useful before a release)
 make build-all
+
+# Publish to GHCR (requires GHCR credentials)
+make publish PACKAGE=spark
 ```
 
-Images are tagged according to `containers/<name>/container.yaml#publish`. CI automatically stamps provenance metadata and performs Trivy scans before pushes.
+Images are tagged according to `containers/<name>/container.yaml#publish`. CI automatically stamps provenance metadata, adds `sha-<git>` tags, and performs Trivy scans before pushes.
+
+## Tagging & Registry (GHCR)
+- Registry: `ghcr.io/mrossco/data-platform-containers/<slug>`
+- Tags: `latest` on every push, semantic version tags (`x`, `x.y`, `x.y.z`) when `version.current` is set, `sha-<12char>` from CI for provenance, and optional `stable` during releases.
+- Local builds also tag `<slug>:local` for compose-based workflows.
+- Digests are the immutable source of truth; mutable tags are conveniences that always point to a known digest recorded by CI.
 
 ## Sample Deployments
-The snippets below assume you built images locally with `make build PACKAGE=<name>`, producing tags such as `data-platform/<name>:local`. Swap in your registry coordinates when pulling from CI.
+The snippets below assume you built images locally with `make build PACKAGE=<name>`, producing tags such as `<slug>:local`. Swap in GHCR coordinates when pulling from CI (for example, `ghcr.io/mrossco/data-platform-containers/airflow-runtime:latest`).
 
 ### Airflow (SequentialExecutor)
 ```bash
-export AIRFLOW_IMAGE=data-platform/airflow:local
+export AIRFLOW_IMAGE=ghcr.io/mrossco/data-platform-containers/airflow-runtime:latest
 docker volume create airflow_home
 
 # Initialize the metadata database (SQLite for demo purposes)
@@ -75,7 +85,7 @@ docker run -d --name airflow-scheduler \
 
 ### Spark Job Submission
 ```bash
-export SPARK_IMAGE=data-platform/spark:local
+export SPARK_IMAGE=ghcr.io/mrossco/data-platform-containers/spark-runtime:latest
 
 # Run the bundled Pi example over a local[*] master
 docker run --rm \
@@ -93,7 +103,7 @@ docker run --rm \
 
 ### Hive Metastore with PostgreSQL Backend
 ```bash
-export HIVE_IMAGE=data-platform/hive-metastore:local
+export HIVE_IMAGE=ghcr.io/mrossco/data-platform-containers/hive-metastore:latest
 docker network create data-plane-demo >/dev/null 2>&1 || true
 
 # Ephemeral PostgreSQL backing database
@@ -138,7 +148,7 @@ services:
       - postgres_airflow_data:/var/lib/postgresql/data
 
   hive-metastore:
-    image: data-platform/hive-metastore:local
+    image: ghcr.io/mrossco/data-platform-containers/hive-metastore:latest
     depends_on:
       - postgres-metastore
     environment:
@@ -152,7 +162,7 @@ services:
       - "9083:9083"
 
   airflow-webserver:
-    image: data-platform/airflow:local
+    image: ghcr.io/mrossco/data-platform-containers/airflow-runtime:latest
     depends_on:
       - postgres-airflow
     environment:
@@ -163,7 +173,7 @@ services:
       - "8080:8080"
 
   airflow-scheduler:
-    image: data-platform/airflow:local
+    image: ghcr.io/mrossco/data-platform-containers/airflow-runtime:latest
     depends_on:
       - airflow-webserver
     environment:
@@ -172,7 +182,7 @@ services:
     command: scheduler
 
   spark-job:
-    image: data-platform/spark:local
+    image: ghcr.io/mrossco/data-platform-containers/spark-runtime:latest
     profiles: ["jobs"]
     depends_on:
       - hive-metastore
@@ -194,6 +204,12 @@ docker compose up -d
 ```
 
 The compose example is intentionally minimal—wire in TLS, production storage, and distributed Spark clusters according to your deployment standards. Use `docker compose run --rm --profile jobs spark-job` to submit ad-hoc jobs or override the command for a custom workload. Refer to the wiki page [Extending the Data Platform](docs/wiki/extending-the-project.md) for best practices when promoting this demo into a production topology.
+
+### Concepts Demonstrated (Portfolio Lens)
+- Supply-chain hygiene: digest-pinned bases, repeatable tagging (`latest`, semver, `sha-*`, optional `stable`), and Trivy scans in CI.
+- Change detection: selective builds based on git diff plus opt-in `build all` via workflow dispatch.
+- Registry practices: GHCR login with GitHub token, `:local` tags for developer ergonomics, and retagging helpers for namespace moves.
+- Runtime ergonomics: sensible defaults for Airflow/Spark images and docker-compose snippets that mirror production without cloud dependencies.
 
 ## Additional Documentation
 - [Container Development Methodologies](docs/wiki/container-development-methodologies.md)

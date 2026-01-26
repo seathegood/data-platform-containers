@@ -58,7 +58,7 @@ def flatten_build_args(metadata: Dict[str, Any]) -> Dict[str, str]:
     return resolved
 
 
-def compute_tags(metadata: Dict[str, Any]) -> List[str]:
+def compute_resolved_tags(metadata: Dict[str, Any]) -> List[str]:
     publish = metadata.get("publish", {})
     image = publish.get("image")
     if not image:
@@ -69,8 +69,62 @@ def compute_tags(metadata: Dict[str, Any]) -> List[str]:
     resolved: List[str] = []
     for tag in tags:
         resolved_tag = str(resolve_token(metadata, tag))
-        resolved.append(f"{image}:{resolved_tag}")
+        resolved.append(resolved_tag)
+
+    version = str(metadata.get("version", {}).get("current", "")).strip()
+    if version:
+        parts = version.split(".")
+        if len(parts) >= 3 and all(p.isdigit() for p in parts[:3]):
+            major, minor, patch = parts[:3]
+            for extra in (major, f"{major}.{minor}", f"{major}.{minor}.{patch}"):
+                if extra not in resolved:
+                    resolved.append(extra)
+
+    if "latest" not in resolved:
+        resolved.append("latest")
+
+    if os.environ.get("PACKAGE_INCLUDE_STABLE"):
+        if "stable" not in resolved:
+            resolved.append("stable")
+
+    sha = None
+    env_sha = os.environ.get("GITHUB_SHA") or os.environ.get("GIT_SHA")
+    if env_sha:
+        sha = env_sha[:12]
+    else:
+        try:
+            completed = subprocess.run(
+                ["git", "rev-parse", "--short=12", "HEAD"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            sha = completed.stdout.strip()
+        except Exception:
+            sha = None
+    if sha:
+        sha_tag = f"sha-{sha}"
+        if sha_tag not in resolved:
+            resolved.append(sha_tag)
+
     return resolved
+
+
+def compute_tags(metadata: Dict[str, Any]) -> List[str]:
+    publish = metadata.get("publish", {})
+    image = publish.get("image")
+    if not image:
+        raise SystemExit("publish.image must be set in container.yaml")
+    return [f"{image}:{tag}" for tag in compute_resolved_tags(metadata)]
+
+
+def compute_local_tag(metadata: Dict[str, Any]) -> str:
+    publish = metadata.get("publish", {})
+    image = publish.get("image")
+    if not image:
+        raise SystemExit("publish.image must be set in container.yaml")
+    base = image.rsplit("/", 1)[-1]
+    return f"{base}:local"
 
 
 def docker_build(package_dir: Path, metadata: Dict[str, Any], args: argparse.Namespace) -> None:
@@ -81,6 +135,7 @@ def docker_build(package_dir: Path, metadata: Dict[str, Any], args: argparse.Nam
         raise SystemExit(f"build context not found: {context_dir}")
 
     tags = compute_tags(metadata)
+    local_tag = compute_local_tag(metadata)
     build_args = flatten_build_args(metadata)
 
     platforms = args.platform or os.environ.get("PACKAGE_PLATFORMS")
@@ -107,6 +162,8 @@ def docker_build(package_dir: Path, metadata: Dict[str, Any], args: argparse.Nam
 
     for tag in tags:
         cmd.extend(["-t", tag])
+    if local_tag not in tags:
+        cmd.extend(["-t", local_tag])
 
     for key, value in build_args.items():
         cmd.extend(["--build-arg", f"{key}={value}"])
@@ -152,6 +209,50 @@ def docker_push(metadata: Dict[str, Any]) -> None:
 
 def show_info(metadata: Dict[str, Any]) -> None:
     print(json.dumps(metadata, indent=2))
+
+
+def docker_retag(
+    metadata: Dict[str, Any],
+    source_image: str,
+    dry_run: bool,
+    skip_missing: bool,
+) -> None:
+    publish = metadata.get("publish", {})
+    dest_image = publish.get("image")
+    if not dest_image:
+        raise SystemExit("publish.image must be set in container.yaml")
+
+    tags = compute_resolved_tags(metadata)
+    for tag in tags:
+        source = f"{source_image}:{tag}"
+        dest = f"{dest_image}:{tag}"
+        cmd = ["docker", "buildx", "imagetools", "create", "--tag", dest, source]
+        print("→", " ".join(cmd))
+        if not dry_run:
+            completed = subprocess.run(cmd, capture_output=True, text=True)
+            if completed.returncode != 0:
+                stderr = completed.stderr.strip()
+                stdout = completed.stdout.strip()
+                combined = "\n".join([line for line in (stderr, stdout) if line])
+                if skip_missing and "not found" in combined.lower():
+                    print(f"→ skipping missing source tag: {source}")
+                    continue
+                raise SystemExit(combined or f"retag failed for {source}")
+
+
+def resolve_source_image(metadata: Dict[str, Any], source_image: str | None, source_namespace: str | None) -> str:
+    if source_image and source_namespace:
+        raise SystemExit("Provide either --source-image or --source-namespace, not both")
+    if source_image:
+        return source_image
+    if source_namespace:
+        publish = metadata.get("publish", {})
+        dest_image = publish.get("image")
+        if not dest_image:
+            raise SystemExit("publish.image must be set in container.yaml")
+        image_name = dest_image.rsplit("/", 1)[-1]
+        return f"{source_namespace}/{image_name}"
+    raise SystemExit("Missing source image. Provide --source-image or --source-namespace.")
 
 
 
@@ -315,6 +416,8 @@ def list_packages() -> Iterable[str]:
     for path in sorted(CONTAINERS_DIR.iterdir()):
         if path.name.startswith("."):
             continue
+        if path.name == "_template":
+            continue
         if (path / "container.yaml").exists():
             yield path.name
 
@@ -333,6 +436,23 @@ def parse_args() -> argparse.Namespace:
 
     push_parser = subparsers.add_parser("publish", help="Push image tags to a registry")
     push_parser.add_argument("package", help="Package slug")
+
+    retag_parser = subparsers.add_parser(
+        "retag",
+        help="Retag an existing image from another namespace without rebuilding",
+    )
+    retag_parser.add_argument("package", help="Package slug or 'all'")
+    retag_parser.add_argument("--source-image", help="Fully-qualified source image name")
+    retag_parser.add_argument(
+        "--source-namespace",
+        help="Source namespace (e.g. ghcr.io/bssprx/data-platform-containers) used with the destination image name",
+    )
+    retag_parser.add_argument("--dry-run", action="store_true", help="Print commands without pushing")
+    retag_parser.add_argument(
+        "--skip-missing",
+        action="store_true",
+        help="Skip tags that do not exist in the source registry",
+    )
 
     show_parser = subparsers.add_parser("show", help="Pretty-print package metadata")
     show_parser.add_argument("package", help="Package slug")
@@ -355,22 +475,32 @@ def main() -> None:
             print(f"- {slug}")
         return
 
-    metadata, package_dir = load_metadata(getattr(args, "package"))
-
-    if args.command == "build":
-        docker_build(package_dir, metadata, args)
-    elif args.command == "test":
-        run_tests(package_dir, metadata, args)
-    elif args.command == "publish":
-        docker_push(metadata)
-    elif args.command == "show":
-        show_info(metadata)
-    elif args.command == "check-upstream":
-        sys.exit(check_upstream(metadata, package_dir))
-    elif args.command == "detect-version":
-        detect_version(metadata)
+    if args.command == "retag" and getattr(args, "package") == "all":
+        packages = list(list_packages())
     else:
-        raise SystemExit(f"unknown command: {args.command}")
+        packages = [getattr(args, "package")]
+
+    for package in packages:
+        metadata, package_dir = load_metadata(package)
+        if args.command == "build":
+            docker_build(package_dir, metadata, args)
+        elif args.command == "test":
+            run_tests(package_dir, metadata, args)
+        elif args.command == "publish":
+            docker_push(metadata)
+        elif args.command == "retag":
+            source_image = resolve_source_image(
+                metadata, args.source_image, args.source_namespace
+            )
+            docker_retag(metadata, source_image, args.dry_run, args.skip_missing)
+        elif args.command == "show":
+            show_info(metadata)
+        elif args.command == "check-upstream":
+            sys.exit(check_upstream(metadata, package_dir))
+        elif args.command == "detect-version":
+            detect_version(metadata)
+        else:
+            raise SystemExit(f"unknown command: {args.command}")
 
 
 if __name__ == "__main__":

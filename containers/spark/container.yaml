@@ -50,7 +50,7 @@ tests:
   - name: metadata
     command: "./tests/metadata.py"
 publish:
-  image: "docker.io/seathegood/spark-runtime"
+  image: "ghcr.io/mrossco/data-platform-containers/spark-runtime"
   tags:
     - latest
     - "!version.current"
