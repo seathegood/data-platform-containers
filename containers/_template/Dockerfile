@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.6
 
-ARG BASE_IMAGE=ubuntu:22.04
+ARG BASE_IMAGE=ubuntu:22.04@sha256:REPLACE_ME_WITH_DIGEST
 # hadolint ignore=DL3006
 FROM ${BASE_IMAGE}
 
