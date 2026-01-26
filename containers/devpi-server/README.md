@@ -48,3 +48,23 @@ Check health status via the built-in endpoint:
 ```bash
 curl http://localhost:3141/+status
 ```
+
+## Bootstrap and publish example
+Initialize the server (first run only) and create a root user/index:
+
+```bash
+docker exec -it devpi devpi-init
+docker exec -it devpi devpi use http://localhost:3141
+docker exec -it devpi devpi user -c root --password changeme
+docker exec -it devpi devpi login root --password changeme
+docker exec -it devpi devpi index -c root/prod volatile=false
+```
+
+Publish a wheel to the `root/prod` index:
+
+```bash
+python -m pip install --upgrade devpi-client
+devpi use http://localhost:3141/root/prod
+devpi login root --password changeme
+devpi upload  # run inside your package directory
+```

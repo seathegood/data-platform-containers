@@ -14,6 +14,8 @@ This repository curates container images that power a self-hosted, production-re
 | `airflow` | Workflow orchestration tier | Based on `apache/airflow`, with pinned constraints, optional extras, and Git-friendly DAG volume mounts. |
 | `spark` | Batch and streaming compute engine | Ships Spark 4.0, Iceberg runtime, AWS connectors, and a tiny entrypoint for `spark-submit` automation. |
 | `hive-metastore` | Central Iceberg/Hive catalog service | Hardened multi-stage build, PostgreSQL schema bootstrapper, and health checks for readiness probes. |
+| `devpi-server` | Private PyPI cache and index | Ships devpi-server/client, non-root runtime, and healthcheck; persist `/var/lib/devpi`. |
+| `gx-core` | Great Expectations CLI runtime | Packaged GX Core in a venv with non-root user and persistent `/var/lib/gx`. |
 
 Community contributions live under `containers/_template` and follow the same release and testing conventions. See the wiki entry [Container Development Methodologies](docs/wiki/container-development-methodologies.md) for deeper implementation patterns.
 
@@ -84,6 +86,10 @@ docker run -d --name airflow-scheduler \
 ```
 
 For deployments behind an ALB with OIDC, enable Airflow’s FAB remote-user auth manager and the bundled `webserver_config.py`; see `containers/airflow/README.md` for the header/proxy pattern. Username/password auth remains the default in the examples above.
+
+For additional local flows:
+- Spark MinIO compose smoke: `docker compose -f docker-compose.spark.local.yml up --exit-code-from spark-smoke`
+- Airflow ALB/OIDC local stack: `docker compose -f docker-compose.airflow.local.yml up` (uses `airflow-runtime:local` and an Nginx header proxy)
 
 ### Spark Job Submission
 ```bash

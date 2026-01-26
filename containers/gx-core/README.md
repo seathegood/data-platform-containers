@@ -44,3 +44,15 @@ docker run --rm -it \
   ghcr.io/seathegood/data-platform-containers/gx-core:latest \
   suite list
 ```
+
+## CI-friendly usage
+Mount your GX project and run validations non-interactively:
+
+```bash
+docker run --rm \
+  -v "$(pwd)/gx-project:/var/lib/gx" \
+  ghcr.io/seathegood/data-platform-containers/gx-core:latest \
+  checkpoint run nightly_data_quality
+```
+
+The image runs as non-root `gx` (UID/GID 886) on top of Python 3.11 slim with GX installed in a venv.

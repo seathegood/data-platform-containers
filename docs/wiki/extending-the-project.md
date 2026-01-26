@@ -26,6 +26,7 @@ Use this guide when you need to add a new service, swap dependencies, or tailor 
 - Update sample deployments (`README.md`, `docs/maintenance.md`, or `docs/runbooks/`) to explain how operators stitch the service into the stack.
 - If the change alters contracts (ports, schemas, storage), document migration steps and default configuration toggles.
 - Prefer open-standard services when introducing catalog or metadata layers. If a cloud-native service like AWS Glue is required, document the decision and provide explicit rollback steps (e.g., switching the Iceberg catalog back to Hive Metastore).
+- When adding a new catalog/metadata service, include a minimal compose example and note how to roll back to the previous catalog.
 
 ## 5. Promote to Production
 - Build and scan the image with `make build PACKAGE=<name>` and `make check`.

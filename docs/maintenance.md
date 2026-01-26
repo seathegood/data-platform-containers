@@ -12,6 +12,7 @@ The automation in this repository keeps containers healthy, but humans still nee
 - Update base image digests referenced in `containers/*/container.yaml` and open PRs with the refreshed pins.
 - Re-run vulnerability scans with your preferred tooling and address critical findings immediately.
 - Rotate any expiring credentials used for registry pushes.
+- Re-run compose smokes for Airflow and Spark after digest bumps; clear `containers/spark/local/minio/` if you need a clean run.
 
 ## Base Image Migrations
 - Spark now uses Eclipse Temurin (OpenJDK images are deprecated upstream). When updating Java base images, use Temurin tags and pin digests in `containers/spark/container.yaml`.
@@ -29,6 +30,7 @@ The automation in this repository keeps containers healthy, but humans still nee
 
 ## Spark Runtime Notes
 - `make test PACKAGE=spark` runs a compose-based smoke test that exercises MinIO, S3A, AWS SDK classes, and Iceberg; ensure Docker and Docker Compose are available on the host.
+- MinIO data for smokes lives under `containers/spark/local/minio/`; prune if you need a clean run.
 
 ## Release Tagging
 - `latest` moves on every push; `stable` moves only on explicit release.
