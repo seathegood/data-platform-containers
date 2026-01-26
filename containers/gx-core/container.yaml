@@ -1,0 +1,54 @@
+name: "Great Expectations Core"
+slug: "gx-core"
+summary: "CLI-focused Great Expectations runtime for authoring and validating expectations."
+maintainers:
+  - name: Platform Containers Team
+    email: containers@example.com
+links:
+  homepage: https://greatexpectations.io/
+  source: https://github.com/great-expectations/great_expectations
+  documentation: https://docs.greatexpectations.io/docs/
+license: Apache-2.0
+version:
+  strategy: pypi
+  component: great_expectations
+  current: "1.10.0"
+  notes: "Monitor https://docs.greatexpectations.io/docs/changelog/core for release changes."
+runtime:
+  base_image: "python:3.11.9-slim@sha256:8fb099199b9f2d70342674bd9dbccd3ed03a258f26bbd1d556822c6dfc60c317"
+  user: "gx"
+  workdir: "/var/lib/gx"
+  entrypoint:
+    - "/usr/bin/tini"
+    - "--"
+    - "/usr/local/bin/entrypoint.sh"
+  cmd:
+    - "--help"
+  env:
+    - name: GX_HOME
+      default: "/var/lib/gx"
+      description: "Default directory for GX artifacts, data contexts, and expectation suites."
+  volumes:
+    - name: data
+      path: /var/lib/gx
+build:
+  context: "."
+  dockerfile: "Dockerfile"
+  args:
+    BASE_IMAGE: "!runtime.base_image"
+    GX_VERSION: "!version.current"
+    GX_UID: "886"
+    GX_GID: "886"
+tests:
+  - name: metadata
+    command: "./tests/metadata.py"
+publish:
+  image: "ghcr.io/seathegood/data-platform-containers/gx-core"
+  tags:
+    - latest
+    - "!version.current"
+  labels:
+    org.opencontainers.image.title: "!name"
+    org.opencontainers.image.version: "!version.current"
+    org.opencontainers.image.description: "!summary"
+    org.opencontainers.image.documentation: "https://docs.greatexpectations.io/docs/"

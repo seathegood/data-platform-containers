@@ -1,0 +1,70 @@
+name: "Devpi Server"
+slug: "devpi-server"
+summary: "Private PyPI cache and package index powered by devpi-server."
+maintainers:
+  - name: Platform Containers Team
+    email: containers@example.com
+links:
+  homepage: https://devpi.net/
+  source: https://github.com/devpi/devpi
+  documentation: https://devpi.net/docs/devpi/devpi/latest/+doc/
+license: MIT
+version:
+  strategy: pypi
+  component: devpi-server
+  current: "6.17.0"
+  notes: "Track https://devpi.net/docs/devpi/devpi/latest/+doc/changelog.html for upgrade guidance."
+runtime:
+  base_image: "python:3.13.7-slim@sha256:5f55cdf0c5d9dc1a415637a5ccc4a9e18663ad203673173b8cda8f8dcacef689"
+  user: "devpi"
+  workdir: "/var/lib/devpi"
+  entrypoint:
+    - "/usr/bin/tini"
+    - "--"
+    - "/usr/local/bin/entrypoint.sh"
+  cmd: []
+  ports:
+    - name: http
+      container_port: 3141
+      protocol: tcp
+  env:
+    - name: DEVPI_SERVERDIR
+      default: "/var/lib/devpi"
+      description: "Data directory for devpi-server runtime state."
+    - name: DEVPI_HOST
+      default: "0.0.0.0"
+      description: "Interface bound by devpi-server when no custom command is provided."
+    - name: DEVPI_PORT
+      default: "3141"
+      description: "Port exposed by devpi-server."
+    - name: DEVPI_SERVER_FLAGS
+      default: ""
+      description: "Extra flags appended to the devpi-server invocation."
+    - name: DEVPI_HEALTHCHECK_HOST
+      default: "127.0.0.1"
+      description: "Host probed by the container health check."
+  volumes:
+    - name: data
+      path: /var/lib/devpi
+build:
+  context: "."
+  dockerfile: "Dockerfile"
+  args:
+    BASE_IMAGE: "!runtime.base_image"
+    DEVPI_SERVER_VERSION: "!version.current"
+    DEVPI_CLIENT_VERSION: "7.2.0"
+    DEVPI_UID: "885"
+    DEVPI_GID: "885"
+tests:
+  - name: metadata
+    command: "./tests/metadata.py"
+publish:
+  image: "ghcr.io/seathegood/data-platform-containers/devpi-server"
+  tags:
+    - latest
+    - "!version.current"
+  labels:
+    org.opencontainers.image.title: "!name"
+    org.opencontainers.image.version: "!version.current"
+    org.opencontainers.image.description: "!summary"
+    org.opencontainers.image.documentation: "https://devpi.net/docs/devpi/devpi/latest/+doc/"
