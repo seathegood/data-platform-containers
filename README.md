@@ -83,6 +83,8 @@ docker run -d --name airflow-scheduler \
   scheduler
 ```
 
+For deployments behind an ALB with OIDC, enable Airflow’s FAB remote-user auth manager and the bundled `webserver_config.py`; see `containers/airflow/README.md` for the header/proxy pattern. Username/password auth remains the default in the examples above.
+
 ### Spark Job Submission
 ```bash
 export SPARK_IMAGE=ghcr.io/mrossco/data-platform-containers/spark-runtime:latest

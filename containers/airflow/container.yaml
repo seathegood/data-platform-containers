@@ -11,11 +11,13 @@ links:
 license: Apache-2.0
 version:
   strategy: pypi
-  current: "3.1.3"
+  current: "3.1.5"
   component: apache-airflow
-  notes: "Refer to https://airflow.apache.org/docs/#release-notes for upgrade guidance."
+  notes: |
+    Refer to https://airflow.apache.org/docs/#release-notes for upgrade guidance.
+    Version pin tracked in this repository's issue tracker.
 runtime:
-  base_image: "apache/airflow:!version.current-python3.10"
+  base_image: "apache/airflow:3.1.5-python3.10@sha256:48ef3ff4c0c99ab1d831d8400476ea1b1f41bee665e39f7bf46c22380a18d185"
   user: "airflow"
   workdir: "/opt/airflow"
   entrypoint:
@@ -31,6 +33,24 @@ runtime:
     - name: AIRFLOW__CORE__LOAD_EXAMPLES
       default: "False"
       description: "Disable loading example DAGs by default."
+    - name: AIRFLOW__CORE__AUTH_MANAGER
+      default: "airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager"
+      description: "Enable FAB auth manager (required for remote-user auth in Airflow 3.x)."
+    - name: AIRFLOW__WEBSERVER__WEB_SERVER_CONFIG
+      default: "/opt/airflow/webserver_config.py"
+      description: "Load the bundled webserver (FAB) config from this image."
+    - name: AIRFLOW__FAB__CONFIG_FILE
+      default: "/opt/airflow/webserver_config.py"
+      description: "FAB config file used to enable remote-user auth when FAB is active."
+    - name: AIRFLOW__FAB__REMOTE_USER_HEADER
+      default: ""
+      description: "Remote user header name (e.g., x-amzn-oidc-identity)."
+    - name: AIRFLOW__FAB__AUTH_USER_REGISTRATION
+      default: "True"
+      description: "Auto-provision users for remote-user auth when enabled."
+    - name: AIRFLOW__FAB__AUTH_USER_REGISTRATION_ROLE
+      default: "Viewer"
+      description: "Default role for auto-provisioned users when enabled."
   volumes:
     - name: dags
       path: /opt/airflow/dags
@@ -42,11 +62,17 @@ build:
   context: "."
   dockerfile: "Dockerfile"
   args:
+    BASE_IMAGE: "!runtime.base_image"
     AIRFLOW_VERSION: "!version.current"
     PYTHON_VERSION: "3.10"
+    CONSTRAINTS_BASE: "https://raw.githubusercontent.com/apache/airflow"
 tests:
   - name: metadata
     command: "./tests/metadata.py"
+  - name: alb-oidc-utils
+    command: "./tests/alb_oidc_utils.py"
+  - name: alb-integration
+    command: "./tests/alb_integration.sh"
 publish:
   image: "ghcr.io/mrossco/data-platform-containers/airflow-runtime"
   tags:
