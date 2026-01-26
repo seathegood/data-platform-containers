@@ -7,7 +7,7 @@ The entrypoint runs `spark-submit` directly and does not clone or install job co
 Run a simple version check:
 
 ```bash
-docker run --rm ghcr.io/mrossco/data-platform-containers/spark-runtime:4.0.1 --version
+docker run --rm ghcr.io/seathegood/data-platform-containers/spark-runtime:4.0.1 --version
 ```
 
 Run a Spark application (mount or bake your app into the image):
@@ -16,7 +16,7 @@ Run a Spark application (mount or bake your app into the image):
 docker run --rm \
   -v "$PWD/app:/opt/app" \
   -w /opt/app \
-  ghcr.io/mrossco/data-platform-containers/spark-runtime:4.0.1 \
+  ghcr.io/seathegood/data-platform-containers/spark-runtime:4.0.1 \
   spark-submit /opt/app/main.py
 ```
 

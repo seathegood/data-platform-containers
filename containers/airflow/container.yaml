@@ -74,7 +74,7 @@ tests:
   - name: alb-integration
     command: "./tests/alb_integration.sh"
 publish:
-  image: "ghcr.io/mrossco/data-platform-containers/airflow-runtime"
+  image: "ghcr.io/seathegood/data-platform-containers/airflow-runtime"
   tags:
     - latest
     - "!version.current"

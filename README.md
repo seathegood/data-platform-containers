@@ -48,17 +48,17 @@ make publish PACKAGE=spark
 Images are tagged according to `containers/<name>/container.yaml#publish`. CI automatically stamps provenance metadata, adds `sha-<git>` tags, and performs Trivy scans before pushes.
 
 ## Tagging & Registry (GHCR)
-- Registry: `ghcr.io/mrossco/data-platform-containers/<slug>`
+- Registry: `ghcr.io/seathegood/data-platform-containers/<slug>`
 - Tags: `latest` on every push, semantic version tags (`x`, `x.y`, `x.y.z`) when `version.current` is set, `sha-<12char>` from CI for provenance, and optional `stable` during releases.
 - Local builds also tag `<slug>:local` for compose-based workflows.
 - Digests are the immutable source of truth; mutable tags are conveniences that always point to a known digest recorded by CI.
 
 ## Sample Deployments
-The snippets below assume you built images locally with `make build PACKAGE=<name>`, producing tags such as `<slug>:local`. Swap in GHCR coordinates when pulling from CI (for example, `ghcr.io/mrossco/data-platform-containers/airflow-runtime:latest`).
+The snippets below assume you built images locally with `make build PACKAGE=<name>`, producing tags such as `<slug>:local`. Swap in GHCR coordinates when pulling from CI (for example, `ghcr.io/seathegood/data-platform-containers/airflow-runtime:latest`).
 
 ### Airflow (SequentialExecutor)
 ```bash
-export AIRFLOW_IMAGE=ghcr.io/mrossco/data-platform-containers/airflow-runtime:latest
+export AIRFLOW_IMAGE=ghcr.io/seathegood/data-platform-containers/airflow-runtime:latest
 docker volume create airflow_home
 
 # Initialize the metadata database (SQLite for demo purposes)
@@ -87,7 +87,7 @@ For deployments behind an ALB with OIDC, enable Airflow’s FAB remote-user auth
 
 ### Spark Job Submission
 ```bash
-export SPARK_IMAGE=ghcr.io/mrossco/data-platform-containers/spark-runtime:latest
+export SPARK_IMAGE=ghcr.io/seathegood/data-platform-containers/spark-runtime:latest
 
 # Run the bundled Pi example over a local[*] master
 docker run --rm \
@@ -105,7 +105,7 @@ docker run --rm \
 
 ### Hive Metastore with PostgreSQL Backend
 ```bash
-export HIVE_IMAGE=ghcr.io/mrossco/data-platform-containers/hive-metastore:latest
+export HIVE_IMAGE=ghcr.io/seathegood/data-platform-containers/hive-metastore:latest
 docker network create data-plane-demo >/dev/null 2>&1 || true
 
 # Ephemeral PostgreSQL backing database
@@ -150,7 +150,7 @@ services:
       - postgres_airflow_data:/var/lib/postgresql/data
 
   hive-metastore:
-    image: ghcr.io/mrossco/data-platform-containers/hive-metastore:latest
+    image: ghcr.io/seathegood/data-platform-containers/hive-metastore:latest
     depends_on:
       - postgres-metastore
     environment:
@@ -164,7 +164,7 @@ services:
       - "9083:9083"
 
   airflow-webserver:
-    image: ghcr.io/mrossco/data-platform-containers/airflow-runtime:latest
+    image: ghcr.io/seathegood/data-platform-containers/airflow-runtime:latest
     depends_on:
       - postgres-airflow
     environment:
@@ -175,7 +175,7 @@ services:
       - "8080:8080"
 
   airflow-scheduler:
-    image: ghcr.io/mrossco/data-platform-containers/airflow-runtime:latest
+    image: ghcr.io/seathegood/data-platform-containers/airflow-runtime:latest
     depends_on:
       - airflow-webserver
     environment:
@@ -184,7 +184,7 @@ services:
     command: scheduler
 
   spark-job:
-    image: ghcr.io/mrossco/data-platform-containers/spark-runtime:latest
+    image: ghcr.io/seathegood/data-platform-containers/spark-runtime:latest
     profiles: ["jobs"]
     depends_on:
       - hive-metastore
