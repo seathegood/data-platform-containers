@@ -11,7 +11,7 @@ links:
 license: Apache-2.0
 version:
   strategy: pypi
-  current: "2.9.1"
+  current: "3.1.3"
   component: apache-airflow
   notes: "Refer to https://airflow.apache.org/docs/#release-notes for upgrade guidance."
 runtime:

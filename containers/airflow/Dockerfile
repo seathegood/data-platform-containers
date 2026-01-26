@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.6
 
-ARG AIRFLOW_VERSION=2.9.1
+ARG AIRFLOW_VERSION=3.1.3
 ARG PYTHON_VERSION=3.10
 
 FROM apache/airflow:${AIRFLOW_VERSION}-python${PYTHON_VERSION}
@@ -47,4 +47,3 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     rm -f "$CONSTRAINTS_PATH"
 
 USER airflow
-
