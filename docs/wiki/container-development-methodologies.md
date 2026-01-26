@@ -3,7 +3,7 @@
 This wiki captures the shared patterns we apply when crafting and maintaining data plane images. Treat it as the design contract for any new container added to this repository.
 
 ## Design Principles
-- **Open standards first** – Favor Apache and CNCF projects (Spark, Iceberg, Hive, Airflow, Trino) and interoperable protocols such as Thrift and JDBC.
+- **Open standards first** – Favor Apache and CNCF projects (Spark, Iceberg, Hive, Airflow, Trino) and interoperable protocols such as Thrift and JDBC, pairing them with self-hosted tooling like devpi and GX for supply-chain resilience and observability.
 - **Production by default** – Assume images will run in regulated environments. Harden base layers, limit attack surface, and document runtime requirements.
 - **Idempotent builds** – Dockerfiles must be deterministic, pinning artifact versions and checksums where possible.
 - **Runtime minimalism** – Ship only what operators need. Optional tools belong in profile-specific images or are mounted at runtime.
@@ -16,7 +16,7 @@ This wiki captures the shared patterns we apply when crafting and maintaining da
 ## Dependency Management
 - Store Python/Java dependencies in `requirements.txt` or metadata-managed lists. Pin exact versions to prevent sneaky upstream changes.
 - Cache downloads during build stages with BuildKit mounts (`--mount=type=cache`) to speed up iterative development.
-- Prefer fetching artifacts from official archives or registries. Validate them with SHA sums when available (see the Hive Metastore example).
+- Prefer fetching artifacts from official archives or registries. Validate them with SHA sums when available (see the Spark image).
 
 ## Security Hardening
 - Drop to non-root users before shipping. If the upstream entrypoint runs as root, provide explicit justification in `container.yaml`.
@@ -26,12 +26,13 @@ This wiki captures the shared patterns we apply when crafting and maintaining da
 
 ## Configuration Patterns
 - Expose environment variables through `container.yaml#runtime.env` and document them in the container README.
-- Support mounting external config (e.g., `hive-site.xml`) via predictable directories under `/opt`.
-- When multiple configuration layers exist, log the active path at startup (see `containers/hive-metastore/files/entrypoint.sh`).
+- Support mounting external config via predictable directories under `/opt`.
+- When multiple configuration layers exist, log the active path at startup (see `containers/spark/files/entrypoint.sh`).
 
 ## Testing Expectations
 - Provide smoke tests in `containers/<name>/tests/` and register them under `container.yaml#tests`.
 - For services with dependencies, add helper scripts or compose files under `tests/` so CI can stand up the full flow.
+- If the smoke tests depend on a locally built image, ensure `make build` tags a `:local` variant and document the expected tag in the container README.
 - Include YAML or BATS fixtures to verify entrypoint behavior (e.g., ensures required env vars produce actionable errors).
 
 ## Release Workflow

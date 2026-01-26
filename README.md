@@ -218,5 +218,9 @@ The compose example is intentionally minimal—wire in TLS, production storage, 
 - [Extending the Data Platform](docs/wiki/extending-the-project.md)
 - [Operations Runbooks](docs/runbooks/README.md)
 - [Maintenance Checklist](docs/maintenance.md)
+- [AGENTS](AGENTS.md)
+
+### Registry housekeeping (GHCR)
+Use `scripts/ghcr_cleanup_tags.sh` to prune stray tags in GHCR (e.g., test or orphaned `sha-*` tags). It requires `gh` CLI authentication with `GITHUB_TOKEN` that has `packages:write` scope and accepts `--image` and `--keep` options for safety. The script is opt-in and does not run in CI by default.
 
 Contributions are welcome! Open a pull request with proposed improvements and include doc updates or tests alongside code changes.

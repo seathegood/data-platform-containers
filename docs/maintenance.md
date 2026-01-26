@@ -9,8 +9,12 @@ The automation in this repository keeps containers healthy, but humans still nee
 
 ## Monthly
 - Update base image digests under `templates/docker/` to pick up OS patches.
+- Update base image digests referenced in `containers/*/container.yaml` and open PRs with the refreshed pins.
 - Re-run vulnerability scans with your preferred tooling and address critical findings immediately.
 - Rotate any expiring credentials used for registry pushes.
+
+## Base Image Migrations
+- Spark now uses Eclipse Temurin (OpenJDK images are deprecated upstream). When updating Java base images, use Temurin tags and pin digests in `containers/spark/container.yaml`.
 
 ## Quarterly
 - Audit container READMEs for outdated instructions.
@@ -22,6 +26,14 @@ The automation in this repository keeps containers healthy, but humans still nee
 2. Update `containers/<package>/container.yaml` with the new version if auto-update failed.
 3. Execute `make build PACKAGE=<package>` followed by `make test PACKAGE=<package>`.
 4. Tag the repo and trigger the publish workflow if results look good.
+
+## Spark Runtime Notes
+- `make test PACKAGE=spark` runs a compose-based smoke test that exercises MinIO, S3A, AWS SDK classes, and Iceberg; ensure Docker and Docker Compose are available on the host.
+
+## Release Tagging
+- `latest` moves on every push; `stable` moves only on explicit release.
+- Release tags include `x.y.z`, `x`, `x.y`, and `sha-<git>`.
+- Record digests in release notes and treat mutable tags as pointers only.
 
 ## Incident Response
 If a high-severity vulnerability is reported:
