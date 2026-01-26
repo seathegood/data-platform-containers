@@ -1,6 +1,6 @@
 name: "Apache Spark Runtime"
 slug: "spark"
-summary: "Slim Spark 3.5 runtime with Iceberg, Hadoop AWS, and common Python dependencies."
+summary: "Slim Spark 4.0 runtime with Iceberg, Hadoop AWS, and common Python dependencies."
 maintainers:
   - name: Platform Containers Team
     email: containers@example.com
@@ -11,14 +11,14 @@ links:
 license: Apache-2.0
 version:
   strategy: http-directory
-  current: "3.5.1"
+  current: "4.0.1"
   component: spark
   source:
     url: https://archive.apache.org/dist/spark/
     regex: 'spark-([0-9]+\.[0-9]+\.[0-9]+)/'
   notes: "Use the Apache archive or mirror for fetching Spark releases."
 runtime:
-  base_image: "openjdk:17-slim"
+  base_image: "eclipse-temurin:17-jre-jammy"
   user: "root"
   workdir: "/opt/spark"
   entrypoint:
