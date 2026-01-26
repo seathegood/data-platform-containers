@@ -10,6 +10,8 @@ Run a simple version check:
 docker run --rm ghcr.io/seathegood/data-platform-containers/spark-runtime:4.0.1 --version
 ```
 
+Base image: Python 3.12 slim (Bookworm), Java 17. Logging defaults to WARN via the bundled `log4j2.properties` in `containers/spark/files/`; override by mounting your own config to `/opt/spark/conf/log4j2.properties`.
+
 Run a Spark application (mount or bake your app into the image):
 
 ```bash
@@ -37,6 +39,7 @@ The compose smoke run exercises:
 It writes data under `s3a://spark-test` and cleans up the compose stack afterward.
 
 `make test PACKAGE=spark` runs the compose smoke test, so Docker and Docker Compose must be available.
+MinIO data persists under `containers/spark/local/minio/`; prune it if you want a clean run.
 
 ## AWS SDK v2 modularization
 The runtime uses a curated set of AWS SDK v2 modules (no `bundle` jar) to keep the image size smaller.
@@ -71,6 +74,9 @@ Add Apache Hive Metastore:
 
 If you reintroduce Hive jars, verify the smoke tests still pass and consider adding an HMS-specific
 integration test in the downstream environment where the metastore is available.
+
+## Iceberg runtime flavor
+`ICEBERG_RUNTIME_FLAVOR` controls the Spark 4.x Iceberg artifacts (e.g., `4.0_2.13`). Change it only when targeting a different Spark/Iceberg matrix and rerun the smoke tests.
 
 ## Pre-baked dependencies
 Add shared wheels to `containers/spark/files/wheels/` to bake them into the image.

@@ -15,6 +15,7 @@ Edit `containers/<package-name>/container.yaml`:
 - `version`: strategy for discovering new releases (manual, http-json, github, etc.).
 - `runtime`: base image and runtime configuration.
 - `tests`: list of smoke-test commands to run after builds.
+- `publish`: image registry coordinates (use `ghcr.io/seathegood/data-platform-containers/<slug>`).
 
 If the upstream ships artifacts for multiple architectures, document how to fetch per-arch bundles.
 

@@ -17,6 +17,7 @@ This wiki captures the shared patterns we apply when crafting and maintaining da
 - Store Python/Java dependencies in `requirements.txt` or metadata-managed lists. Pin exact versions to prevent sneaky upstream changes.
 - Cache downloads during build stages with BuildKit mounts (`--mount=type=cache`) to speed up iterative development.
 - Prefer fetching artifacts from official archives or registries. Validate them with SHA sums when available (see the Spark image).
+- Pin base images by digest and refresh on a cadence (monthly or with CVE-driven updates); record the rationale for any over-pinning in `container.yaml#notes`.
 
 ## Security Hardening
 - Drop to non-root users before shipping. If the upstream entrypoint runs as root, provide explicit justification in `container.yaml`.
@@ -34,11 +35,13 @@ This wiki captures the shared patterns we apply when crafting and maintaining da
 - For services with dependencies, add helper scripts or compose files under `tests/` so CI can stand up the full flow.
 - If the smoke tests depend on a locally built image, ensure `make build` tags a `:local` variant and document the expected tag in the container README.
 - Include YAML or BATS fixtures to verify entrypoint behavior (e.g., ensures required env vars produce actionable errors).
+- Treat per-image README docs as part of the contract: include env vars, ports, volumes, example runs, and any integration prerequisites.
 
 ## Release Workflow
 - Keep `container.yaml#version.current` in sync with upstream tags. When automation is possible, implement a detector in `scripts/package.py`.
 - Document manual upgrade steps (schema migrations, config changes) in the container-specific README and reference them from `docs/maintenance.md`.
 - Publish images using the `make publish PACKAGE=<name>` workflow. It signs the digest via cosign and attaches SBOM/provenance metadata.
+- Record why dependencies are pinned above upstream minimums (e.g., CVE, bugfix) in `container.yaml#notes` to aid future reviewers.
 
 ## Review Checklist
 Before merging a new container or major change:
