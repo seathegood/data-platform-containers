@@ -10,7 +10,7 @@ Rename files and references to match your package. Keep the directory name lower
 
 ## 2. Describe the Upstream
 Edit `containers/<package-name>/container.yaml`:
-- `name`: human-readable identifier (e.g. `hive-metastore`).
+- `name`: human-readable identifier (e.g. `spark`).
 - `upstream`: source project metadata (homepage, download URL, license).
 - `version`: strategy for discovering new releases (manual, http-json, github, etc.).
 - `runtime`: base image and runtime configuration.
