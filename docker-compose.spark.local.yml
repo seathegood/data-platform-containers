@@ -1,0 +1,107 @@
+name: spark-local
+services:
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./containers/spark/local/minio:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        trap 'exit 0' TERM INT
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
+          sleep 1
+        done
+        mc mb -p local/spark-test || true
+        mc anonymous set none local/spark-test || true
+        touch /opt/minio-init/ready
+        while :; do sleep 1; done
+    volumes:
+      - minio-init-state:/opt/minio-init
+
+  spark-smoke:
+    image: spark-runtime:local
+    pull_policy: never
+    depends_on:
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_started
+    environment:
+      AWS_ACCESS_KEY_ID: minio
+      AWS_SECRET_ACCESS_KEY: minio123
+      AWS_REGION: us-east-1
+    volumes:
+      - ./containers/spark/local/aws_sdk_class_smoke.py:/opt/test/aws_sdk_class_smoke.py:ro
+      - ./containers/spark/local/s3a_smoke.py:/opt/test/s3a_smoke.py:ro
+      - ./containers/spark/local/s3a_auth_smoke.py:/opt/test/s3a_auth_smoke.py:ro
+      - ./containers/spark/local/iceberg_smoke.py:/opt/test/iceberg_smoke.py:ro
+      - ./containers/spark/local/hadoop-metrics2.properties:/opt/spark/conf/hadoop-metrics2.properties:ro
+      - ./containers/spark/local/log4j2.properties:/opt/spark/conf/log4j2.properties:ro
+      - minio-init-state:/opt/minio-init
+    entrypoint:
+      - /bin/bash
+      - -lc
+      - |
+        set -euo pipefail
+        while [[ ! -f /opt/minio-init/ready ]]; do sleep 1; done
+        /opt/spark/bin/spark-submit --master local[*] \
+          --conf spark.ui.enabled=false \
+          --conf spark.hadoop.fs.s3a.endpoint=http://minio:9000 \
+          --conf spark.hadoop.fs.s3a.path.style.access=true \
+          --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
+          --conf spark.hadoop.fs.s3a.access.key=minio \
+          --conf spark.hadoop.fs.s3a.secret.key=minio123 \
+          /opt/test/aws_sdk_class_smoke.py
+        /opt/spark/bin/spark-submit --master local[*] \
+          --conf spark.ui.enabled=false \
+          --conf spark.hadoop.fs.s3a.endpoint=http://minio:9000 \
+          --conf spark.hadoop.fs.s3a.path.style.access=true \
+          --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
+          --conf spark.hadoop.fs.s3a.access.key=minio \
+          --conf spark.hadoop.fs.s3a.secret.key=minio123 \
+          /opt/test/s3a_smoke.py
+        /opt/spark/bin/spark-submit --master local[*] \
+          --conf spark.ui.enabled=false \
+          --conf spark.hadoop.fs.s3a.endpoint=http://minio:9000 \
+          --conf spark.hadoop.fs.s3a.path.style.access=true \
+          --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
+          --conf spark.hadoop.fs.s3a.access.key=minio \
+          --conf spark.hadoop.fs.s3a.secret.key=minio123 \
+          /opt/test/s3a_auth_smoke.py
+        /opt/spark/bin/spark-submit --master local[*] \
+          --conf spark.ui.enabled=false \
+          --conf spark.hadoop.fs.s3a.endpoint=http://minio:9000 \
+          --conf spark.hadoop.fs.s3a.path.style.access=true \
+          --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
+          --conf spark.hadoop.fs.s3a.access.key=minio \
+          --conf spark.hadoop.fs.s3a.secret.key=minio123 \
+          --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
+          --conf spark.sql.catalog.local=org.apache.iceberg.spark.SparkCatalog \
+          --conf spark.sql.catalog.local.type=hadoop \
+          --conf spark.sql.catalog.local.warehouse=s3a://spark-test/iceberg \
+          /opt/test/iceberg_smoke.py
+
+volumes:
+  minio-init-state:

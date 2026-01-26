@@ -16,39 +16,57 @@ version:
   source:
     url: https://archive.apache.org/dist/spark/
     regex: 'spark-([0-9]+\.[0-9]+\.[0-9]+)/'
-  notes: "Use the Apache archive or mirror for fetching Spark releases."
+  notes: |
+    Use the Apache archive or mirror for fetching Spark releases.
+    Version pin tracked in this repository's issue tracker.
+    Hadoop AWS SDK v2 bundle version is pinned to the hadoop-project 3.4.1 POM.
 runtime:
-  base_image: "eclipse-temurin:17-jre-jammy"
-  user: "root"
-  workdir: "/opt/spark"
+  base_image: "python:3.12-slim-bookworm@sha256:4a3ceab05b4e396df42a042415e43a286bb5793352b9258f889d6c7d38ed01fb"
+  user: "spark"
+  workdir: "/opt/workdir"
   entrypoint:
     - "/usr/bin/tini"
     - "--"
     - "/usr/local/bin/entrypoint.sh"
-  cmd:
-    - "--help"
+  cmd: []
   env:
     - name: SPARK_HOME
       default: "/opt/spark"
       description: "Spark installation directory."
-    - name: AIRFLOW__CORE__LOAD_EXAMPLES
-      default: "False"
-      description: "Placeholder environment variable for consistency."
-  volumes:
-    - name: conf
-      path: /opt/conf
 build:
   context: "."
   dockerfile: "Dockerfile"
   args:
+    BASE_IMAGE: "!runtime.base_image"
     SPARK_VERSION: "!version.current"
-    HADOOP_VERSION: "3.3.4"
-    ICEBERG_VERSION: "1.6.0"
-    AWS_SDK_VERSION: "2.25.50"
-    HADOOP_AWS_VERSION: "3.3.4"
+    HADOOP_VERSION: "3.4.1"
+    HADOOP_AWS_VERSION: "3.4.1"
+    AWS_SDK_BUNDLE_VERSION: "2.24.6"
+    AWS_SDK_MODULES: "s3,sts,auth,regions,profiles,imds,url-connection-client,apache-client,s3-transfer-manager,sdk-core,identity-spi,aws-core,http-client-spi,utils,metrics-spi,endpoints-spi,http-auth-spi,http-auth-aws,http-auth,aws-xml-protocol,protocol-core,aws-query-protocol,checksums,checksums-spi,protocols-json,protocols-jsoncore,thirdparty-jackson-core,thirdparty-slf4j-api,arns,glue,kms"
+    ICEBERG_VERSION: "1.10.1"
+    ICEBERG_RUNTIME_FLAVOR: "4.0_2.13"
+    PANDAS_VERSION: "2.2.0"
+    PYARROW_VERSION: "15.0.0"
+    FASTPARQUET_VERSION: "2024.2.0"
+    GRPCIO_VERSION: "1.76.0"
+    GRPCIO_STATUS_VERSION: "1.76.0"
+    GOOGLEAPIS_COMMON_PROTOS_VERSION: "1.71.0"
+    ZSTANDARD_VERSION: "0.25.0"
+    EXTRA_JARS_URLS: ""
+    OCI_SOURCE: "https://github.com/mrossco/data-platform-containers"
+    OCI_REVISION: "!version.current"
+    JAXB_API_VERSION: "2.3.1"
+    JAXB_IMPL_VERSION: "2.3.3"
+    JAXB_CORE_VERSION: "2.3.0.1"
+    ACTIVATION_VERSION: "1.2.0"
+    SLF4J_API_VERSION: "2.0.16"
 tests:
   - name: metadata
     command: "./tests/metadata.py"
+  - name: runtime-smoke
+    command: "bash ./tests/runtime_smoke.sh"
+  - name: compose-smoke
+    command: "bash ./tests/compose_smoke.sh"
 publish:
   image: "ghcr.io/mrossco/data-platform-containers/spark-runtime"
   tags:
@@ -59,3 +77,5 @@ publish:
     org.opencontainers.image.version: "!version.current"
     org.opencontainers.image.description: "!summary"
     org.opencontainers.image.documentation: "https://spark.apache.org/docs/latest/"
+    org.opencontainers.image.source: "https://github.com/mrossco/data-platform-containers"
+    org.opencontainers.image.revision: "!version.current"
