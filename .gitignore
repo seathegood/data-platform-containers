@@ -15,3 +15,7 @@ Icon?
 .mypy_cache/
 .pytest_cache/
 **/_tmp/
+containers/airflow/local/
+logs/
+# Local Spark smoke test artifacts
+containers/spark/local/minio/
