@@ -11,13 +11,13 @@ links:
 license: Apache-2.0
 version:
   strategy: pypi
-  current: "3.1.5"
+  current: "3.1.7"
   component: apache-airflow
   notes: |
     Refer to https://airflow.apache.org/docs/#release-notes for upgrade guidance.
     Version pin tracked in this repository's issue tracker.
 runtime:
-  base_image: "apache/airflow:3.1.5-python3.10@sha256:48ef3ff4c0c99ab1d831d8400476ea1b1f41bee665e39f7bf46c22380a18d185"
+  base_image: "apache/airflow:3.1.7-python3.10@sha256:a40a276c46645cc3e80b2ceccb1437231ca727a7c31f31591489f275caee7505"
   user: "airflow"
   workdir: "/opt/airflow"
   entrypoint:
