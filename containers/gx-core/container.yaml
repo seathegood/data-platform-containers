@@ -12,7 +12,7 @@ license: Apache-2.0
 version:
   strategy: pypi
   component: great_expectations
-  current: "1.10.0"
+  current: "1.12.3"
   notes: "Monitor https://docs.greatexpectations.io/docs/changelog/core for release changes."
 runtime:
   base_image: "python:3.11.9-slim@sha256:8fb099199b9f2d70342674bd9dbccd3ed03a258f26bbd1d556822c6dfc60c317"
