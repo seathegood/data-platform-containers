@@ -29,11 +29,25 @@ Community contributions live under `containers/_template` and follow the same re
 
 ## Prerequisites
 - Docker 20.10+ with BuildKit enabled (`DOCKER_BUILDKIT=1`).
-- Python 3.10+ with `pip install -r requirements-dev.txt` (or `pyyaml` at minimum).
+- Python 3.10+.
 - GNU Make, Bash, and standard Unix tooling.
+
+## Local Work Contract
+- Bootstrap toolchain: `make bootstrap` (creates `.venv` and installs required Python tooling).
+- Validate local environment: `make doctor`.
+- Core validation: `make check`.
+- Lint wrapper: `make lint` (currently aliases `make check`).
+- Unit wrapper: `make unit` (currently aliases `make check`).
+- Formatting targets are defined (`make format`, `make format-check`) but no repo-wide formatter is configured yet.
+- Cleanup local artifacts: `make clean-local`.
+- Transient local outputs live in `_tmp/` (untracked).
+- Generated reports should go in `_reports/` (untracked).
 
 ## Build and Test Locally
 ```bash
+make bootstrap
+make doctor
+
 # Build a single image (outputs to docker image cache)
 make build PACKAGE=spark
 
@@ -42,6 +56,9 @@ make test PACKAGE=spark
 
 # Build everything (useful before a release)
 make build-all
+
+# Validate repo metadata/contracts
+make check
 
 # Publish to GHCR (requires GHCR credentials)
 make publish PACKAGE=spark
@@ -228,5 +245,9 @@ The compose example is intentionally minimal—wire in TLS, production storage, 
 
 ### Registry housekeeping (GHCR)
 Use `scripts/ghcr_cleanup_tags.sh` to prune stray tags in GHCR (e.g., test or orphaned `sha-*` tags). It requires `gh` CLI authentication with `GITHUB_TOKEN` that has `packages:write` scope and accepts `--image` and `--keep` options for safety. The script is opt-in and does not run in CI by default.
+
+### Environment variables
+- `.env` is local-only and untracked.
+- `.env.example` contains optional helper variables used by sample commands; it does not contain secrets.
 
 Contributions are welcome! Open a pull request with proposed improvements and include doc updates or tests alongside code changes.

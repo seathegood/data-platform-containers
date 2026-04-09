@@ -3,12 +3,11 @@
 The automation in this repository keeps containers healthy, but humans still need to review change streams and apply security patches. Use the checklist below as part of your operational cadence.
 
 ## Weekly
-- Run `make check` to lint metadata and confirm scripts work on your platform.
+- Run `make doctor` then `make check` to validate local prerequisites and metadata integrity.
 - Review upstream project release feeds; confirm `./scripts/package.py detect-version <package>` still reports the correct version.
 - Inspect CI runs for flakiness or skipped tests.
 
 ## Monthly
-- Update base image digests under `templates/docker/` to pick up OS patches.
 - Update base image digests referenced in `containers/*/container.yaml` and open PRs with the refreshed pins.
 - Re-run vulnerability scans with your preferred tooling and address critical findings immediately.
 - Rotate any expiring credentials used for registry pushes.
@@ -41,6 +40,6 @@ The automation in this repository keeps containers healthy, but humans still nee
 If a high-severity vulnerability is reported:
 - Bump base images immediately.
 - Review `containers/<package>/files/` overrides for vulnerable dependencies.
-- Document the incident in `docs/runbooks/security.md` and link to patches or mitigations.
+- Document the incident in a runbook under `docs/runbooks/` and link to patches or mitigations.
 
 Keeping this template healthy ensures every downstream image follows secure, repeatable practices.

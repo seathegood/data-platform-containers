@@ -13,10 +13,15 @@
 - `scripts/package.py` is the build/test/publish CLI.
 - `Makefile` wraps common tasks.
 - `.github/workflows/` contains CI pipelines and release automation.
+- `_tmp/` is transient local workspace state (untracked).
+- `_reports/` is the preferred location for generated local reports (untracked).
+- `.env` is local-only; optional examples live in `.env.example`.
 
 ## Default Workflow
 - Start read-only; confirm conventions from existing containers before editing.
 - Limit changes to one image at a time unless explicitly requested.
+- Prefer `make` targets over ad hoc commands when an equivalent exists.
+- Run `make doctor` before substantial local execution.
 - Update `container.yaml` and `Dockerfile` together for version or build-arg changes.
 - Run `make test PACKAGE=<slug>` after edits when possible.
 - Run Shellcheck on modified shell scripts when possible.
@@ -43,9 +48,15 @@
 
 ## Build and Test Commands
 - List images: `./scripts/package.py`
+- Bootstrap local toolchain: `make bootstrap`
+- Local environment checks: `make doctor`
 - Build: `make build PACKAGE=<slug>`
+- Build all: `make build-all`
 - Test: `make test PACKAGE=<slug>`
+- Test all: `make test-all`
 - Show metadata: `make show PACKAGE=<slug>`
+- Contract checks: `make check` (also exposed via `make lint` and `make unit`)
+- Cleanup local artifacts: `make clean-local`
 - Publish (maintainers only): `make publish PACKAGE=<slug>`
 - Build logs (optional): `BUILD_LOG=1 make build PACKAGE=<slug>` writes to `logs/build-<slug>-<timestamp>.log` (override dir with `LOG_DIR=...`)
 - Run Trivy via CI; locally, fail on CRITICAL/HIGH where possible.

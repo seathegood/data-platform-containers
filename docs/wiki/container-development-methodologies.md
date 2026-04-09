@@ -23,7 +23,7 @@ This wiki captures the shared patterns we apply when crafting and maintaining da
 - Drop to non-root users before shipping. If the upstream entrypoint runs as root, provide explicit justification in `container.yaml`.
 - Remove package managers (`apt`, `apk`) and residual caches at the end of each stage.
 - Provide health checks and readiness signals so orchestrators can detect misconfigurations quickly.
-- Track CVEs with automated scans (`make check` runs Trivy by default) and remediate high-severity findings before tagging releases.
+- Track CVEs with automated scans (Trivy runs in CI by default) and remediate high-severity findings before tagging releases.
 
 ## Configuration Patterns
 - Expose environment variables through `container.yaml#runtime.env` and document them in the container README.

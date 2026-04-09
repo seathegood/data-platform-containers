@@ -6,7 +6,19 @@ export PATH := $(VENV_BIN):$(PATH)
 export VIRTUAL_ENV := $(CURDIR)/.venv
 endif
 
-.PHONY: list build test publish show detect-version smoke-all check
+PACKAGES := $(shell ./scripts/package.py | awk '/^-/{print $$2}' | grep -v '^_')
+
+.PHONY: bootstrap doctor list build build-all test test-all publish show detect-version smoke-all check lint format format-check unit clean-local
+
+bootstrap:
+	@python3 -m venv .venv
+	@$(VENV_BIN)/python -m pip install --upgrade pip pyyaml
+
+doctor:
+	@command -v docker >/dev/null || (echo "docker not found in PATH" && exit 1)
+	@command -v python3 >/dev/null || (echo "python3 not found in PATH" && exit 1)
+	@$(if $(wildcard $(VENV_BIN)/python),$(VENV_BIN)/python,python3) -c 'import yaml'
+	@echo "Environment looks healthy."
 
 list:
 	@./scripts/package.py
@@ -24,9 +36,21 @@ build:
 		./scripts/package.py build $(PACKAGE)$(if $(PACKAGE_PLATFORMS), --platform $(PACKAGE_PLATFORMS),); \
 	fi
 
+build-all:
+	@for pkg in $(PACKAGES); do \
+		echo "==> $$pkg"; \
+		./scripts/package.py build $$pkg; \
+	done
+
 test:
 	@test -n "$(PACKAGE)" || (echo "Set PACKAGE=<slug>" && exit 1)
 	./scripts/package.py test $(PACKAGE)
+
+test-all:
+	@for pkg in $(PACKAGES); do \
+		echo "==> $$pkg"; \
+		./scripts/package.py test $$pkg; \
+	done
 
 publish:
 	@test -n "$(PACKAGE)" || (echo "Set PACKAGE=<slug>" && exit 1)
@@ -41,14 +65,30 @@ detect-version:
 	./scripts/package.py detect-version $(PACKAGE)
 
 smoke-all:
-	@for pkg in $$(./scripts/package.py | awk '/^-/{print $$2}'); do \
+	@for pkg in $(PACKAGES); do \
 		echo "==> $$pkg"; \
 		./scripts/package.py build $$pkg; \
 		./scripts/package.py test $$pkg; \
 	done
 
 check:
-	@for pkg in $(shell ./scripts/package.py | awk '/^-/{print $$2}' | grep -v '^_'); do \
+	@for pkg in $(PACKAGES); do \
 		printf 'Checking %s\n' $$pkg; \
 		./scripts/package.py show $$pkg >/dev/null; \
 	done
+
+lint: check
+
+format:
+	@echo "No repository-wide formatter is configured."
+
+format-check:
+	@echo "No repository-wide formatter is configured."
+
+unit: check
+
+clean-local:
+	@rm -rf logs _tmp _reports reports
+	@rm -rf containers/spark/local/minio
+	@rm -rf containers/airflow/local/logs containers/airflow/local/plugins
+	@echo "Local artifacts cleaned."

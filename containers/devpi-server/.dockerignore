@@ -1,0 +1,13 @@
+.git
+.gitignore
+README.md
+tests/
+local/
+_tmp/
+_reports/
+reports/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.DS_Store

@@ -59,8 +59,7 @@ services:
     command: ["api-server"]
     ports:
       - "8080:8080"
-volumes:
-  airflow_db_data:
+    volumes:
       - ./containers/airflow/local/dags:/opt/airflow/dags
       - ./containers/airflow/local/logs:/opt/airflow/logs
       - ./containers/airflow/local/plugins:/opt/airflow/plugins
@@ -89,3 +88,6 @@ volumes:
       - ./containers/airflow/local/dags:/opt/airflow/dags
       - ./containers/airflow/local/logs:/opt/airflow/logs
       - ./containers/airflow/local/plugins:/opt/airflow/plugins
+
+volumes:
+  airflow_db_data:

@@ -19,21 +19,21 @@ SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 USER root
 # base image maintained upstream; OS packages pinned during release process
 # hadolint ignore=DL3008
-RUN apt-get update \ 
-    && apt-get install -y --no-install-recommends \ 
-        build-essential \ 
-        curl \ 
-        git \ 
-        libffi-dev \ 
-        libpq5 \ 
-        libpq-dev \ 
-        libsasl2-dev \ 
-        libssl-dev \ 
-        locales \ 
-        openssh-client \ 
-        unixodbc \ 
-        unixodbc-dev \ 
-    && apt-get clean \ 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        git \
+        libffi-dev \
+        libpq5 \
+        libpq-dev \
+        libsasl2-dev \
+        libssl-dev \
+        locales \
+        openssh-client \
+        unixodbc \
+        unixodbc-dev \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /opt/airflow/requirements.txt

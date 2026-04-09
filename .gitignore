@@ -14,7 +14,11 @@ Icon?
 .envrc
 .mypy_cache/
 .pytest_cache/
+/_tmp/
+/_reports/
+/reports/
 **/_tmp/
+**/_reports/
 containers/airflow/local/
 logs/
 # Local Spark smoke test artifacts
