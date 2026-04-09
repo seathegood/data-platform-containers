@@ -36,8 +36,9 @@ Community contributions live under `containers/_template` and follow the same re
 - Bootstrap toolchain: `make bootstrap` (creates `.venv` and installs required Python tooling).
 - Validate local environment: `make doctor`.
 - Core validation: `make check`.
-- Lint wrapper: `make lint` (currently aliases `make check`).
+- Local linting: `make lint` (runs metadata checks, `shellcheck`, and `hadolint`).
 - Unit wrapper: `make unit` (currently aliases `make check`).
+- Run package end-to-end smoke (when available): `make e2e PACKAGE=<slug>`.
 - Formatting targets are defined (`make format`, `make format-check`) but no repo-wide formatter is configured yet.
 - Cleanup local artifacts: `make clean-local`.
 - Transient local outputs live in `_tmp/` (untracked).

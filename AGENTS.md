@@ -92,7 +92,7 @@
 - Entrypoint generates `hive-site.xml` if none is mounted, initializes schema when `VERSION` table is absent, and applies upgrade SQL when `SCHEMA_VERSION` differs (defaults to `version.current`).
 - Healthcheck uses `/tmp/metastore-ready`, TCP probe on thrift port (default 9083), and schema version check via `psql`.
 - Volumes: `/opt/hive/logs`, `/opt/hive/tmp`. Runs as non-root `hive`.
-- Current tests are metadata-only; consider adding a Postgres-backed smoke test for schema init/upgrade.
+- Includes a Postgres-backed end-to-end smoke test at `containers/hive-metastore/tests/e2e.sh` for schema init/health verification.
 
 ## Security and Secrets
 - Never bake secrets into images or files.

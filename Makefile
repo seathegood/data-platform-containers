@@ -8,7 +8,7 @@ endif
 
 PACKAGES := $(shell ./scripts/package.py | awk '/^-/{print $$2}' | grep -v '^_')
 
-.PHONY: bootstrap doctor list build build-all test test-all publish show detect-version smoke-all check lint format format-check unit clean-local
+.PHONY: bootstrap doctor list build build-all test test-all e2e publish show detect-version smoke-all check lint format format-check unit clean-local shellcheck hadolint
 
 bootstrap:
 	@python3 -m venv .venv
@@ -52,6 +52,11 @@ test-all:
 		./scripts/package.py test $$pkg; \
 	done
 
+e2e:
+	@test -n "$(PACKAGE)" || (echo "Set PACKAGE=<slug>" && exit 1)
+	@test -x "containers/$(PACKAGE)/tests/e2e.sh" || (echo "No e2e.sh for PACKAGE=$(PACKAGE)" && exit 1)
+	containers/$(PACKAGE)/tests/e2e.sh
+
 publish:
 	@test -n "$(PACKAGE)" || (echo "Set PACKAGE=<slug>" && exit 1)
 	./scripts/package.py publish $(PACKAGE)
@@ -77,7 +82,25 @@ check:
 		./scripts/package.py show $$pkg >/dev/null; \
 	done
 
-lint: check
+shellcheck:
+	@command -v shellcheck >/dev/null || (echo "shellcheck not found. Install shellcheck to run local lint." && exit 1)
+	@sh_files=$$(git ls-files '*.sh'); \
+	if [ -n "$$sh_files" ]; then \
+		echo "$$sh_files" | xargs -r shellcheck; \
+	else \
+		echo "No shell scripts to lint."; \
+	fi
+
+hadolint:
+	@command -v hadolint >/dev/null || (echo "hadolint not found. Install hadolint to run local lint." && exit 1)
+	@dockerfiles=$$(git ls-files '*Dockerfile'); \
+	if [ -n "$$dockerfiles" ]; then \
+		echo "$$dockerfiles" | xargs -n1 hadolint; \
+	else \
+		echo "No Dockerfiles to lint."; \
+	fi
+
+lint: check shellcheck hadolint
 
 format:
 	@echo "No repository-wide formatter is configured."

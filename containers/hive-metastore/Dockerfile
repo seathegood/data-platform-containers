@@ -1,5 +1,5 @@
 # Stage 1: Builder - fetch and validate Hive, Hadoop, and JDBC
-ARG BASE_IMAGE
+ARG BASE_IMAGE=eclipse-temurin:21-jdk-alpine@sha256:c98f0d2e171c898bf896dc4166815d28a56d428e218190a1f35cdc7d82efd61f
 # hadolint ignore=DL3006
 FROM ${BASE_IMAGE} AS builder
 
