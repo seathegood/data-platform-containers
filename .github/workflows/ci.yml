@@ -97,7 +97,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck curl
-          curl -sSL https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 -o hadolint
+          curl -sSL https://github.com/hadolint/hadolint/releases/download/v2.14.0/hadolint-Linux-x86_64 -o hadolint
           sudo install hadolint /usr/local/bin/hadolint
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
 
@@ -261,7 +261,7 @@ jobs:
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         uses: sigstore/cosign-installer@e1523de7571e31dbe865fd2e80c5c7c23ae71eb4
         with:
-          cosign-release: 'v2.2.1'
+          cosign-release: 'v3.0.6'
 
       - name: Sign container images
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}

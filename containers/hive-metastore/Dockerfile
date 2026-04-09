@@ -1,5 +1,7 @@
 # Stage 1: Builder - fetch and validate Hive, Hadoop, and JDBC
-FROM eclipse-temurin:21-jdk-alpine AS builder
+ARG BASE_IMAGE
+# hadolint ignore=DL3006
+FROM ${BASE_IMAGE} AS builder
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
@@ -45,7 +47,8 @@ RUN PG_JDBC_SHA256=$(jq -r --arg ver "${PG_JDBC_VERSION}" '.postgresql[$ver].sha
 RUN wget -q https://repo1.maven.org/maven2/org/slf4j/slf4j-api/${SLF4J_VERSION}/slf4j-api-${SLF4J_VERSION}.jar
 
 # Stage 2: Runtime - minimal and secure image
-FROM eclipse-temurin:21-jdk-alpine AS runtime
+# hadolint ignore=DL3006
+FROM ${BASE_IMAGE} AS runtime
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 
