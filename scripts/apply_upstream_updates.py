@@ -33,6 +33,35 @@ def replace_key(lines: list[str], key: str, value: str) -> bool:
     return False
 
 
+def update_hive_dockerfile(version: str) -> bool:
+    dockerfile_path = CONTAINERS_DIR / "hive-metastore" / "Dockerfile"
+    if not dockerfile_path.exists():
+        return False
+    content = dockerfile_path.read_text()
+    updated = re.sub(r"(ARG HIVE_VERSION=)([0-9]+\.[0-9]+\.[0-9]+)", rf"\g<1>{version}", content)
+    updated = re.sub(r"(ARG SCHEMA_VERSION=)([0-9]+\.[0-9]+\.[0-9]+)", rf"\g<1>{version}", updated)
+    if updated != content:
+        dockerfile_path.write_text(updated)
+        return True
+    return False
+
+
+def update_readme_version(slug: str, image_name: str, version: str) -> bool:
+    readme_path = CONTAINERS_DIR / slug / "README.md"
+    if not readme_path.exists():
+        return False
+    content = readme_path.read_text()
+    updated = re.sub(
+        rf"({re.escape(image_name)}:)([0-9]+\.[0-9]+\.[0-9]+)",
+        rf"\g<1>{version}",
+        content,
+    )
+    if updated != content:
+        readme_path.write_text(updated)
+        return True
+    return False
+
+
 def update_container(entry: dict) -> bool:
     slug = entry.get("package")
     latest = entry.get("latest")
@@ -80,6 +109,14 @@ def update_container(entry: dict) -> bool:
         if new_version and new_version != current_version:
             if replace_key(lines, "ICEBERG_VERSION", str(new_version)):
                 changed = True
+        if update_readme_version("spark", "ghcr.io/seathegood/data-platform-containers/spark-runtime", str(latest)):
+            changed = True
+
+    if slug == "hive-metastore":
+        if update_hive_dockerfile(str(latest)):
+            changed = True
+        if update_readme_version("hive-metastore", "ghcr.io/seathegood/data-platform-containers/hive-metastore", str(latest)):
+            changed = True
 
     if changed:
         metadata_path.write_text("".join(lines))

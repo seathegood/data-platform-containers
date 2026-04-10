@@ -4,11 +4,17 @@ on:
   schedule:
     - cron: '0 7 * * *'
   workflow_dispatch:
+    inputs:
+      open_validated_pr:
+        description: 'Run build/test validation and open a draft PR when checks pass'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
-  contents: read
-  packages: write
-  id-token: write
+  contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
   determine-packages:
@@ -34,10 +40,10 @@ jobs:
     needs: determine-packages
     if: ${{ needs.determine-packages.outputs.packages != '[]' }}
     runs-on: ubuntu-latest
-    permissions:
-      # Needed to commit updates and open PRs.
-      contents: write
-      pull-requests: write
+    outputs:
+      updates: ${{ steps.upstream.outputs.updates }}
+      updates_count: ${{ steps.upstream.outputs.updates_count }}
+      results: ${{ steps.upstream.outputs.results }}
     steps:
       - name: Checkout
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
@@ -77,14 +83,106 @@ jobs:
                       line += f" (latest {latest}, current {current})"
                   print(line)
           PY
-      - name: Apply upstream updates
-        if: ${{ steps.upstream.outputs.updates_count != '0' }}
+      - name: Render issue body
         env:
+          RESULTS_JSON: ${{ steps.upstream.outputs.results }}
           UPDATES_JSON: ${{ steps.upstream.outputs.updates }}
-        run: python3 scripts/apply_upstream_updates.py
+        run: python3 scripts/render_upstream_report.py > upstream-report.md
+      - name: Create or update upstream report issue
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        env:
+          REPORT_BODY: ${{ steps.upstream.outputs.results }}
+        with:
+          script: |
+            const fs = require('fs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = 'Upstream version check report';
+            const body = fs.readFileSync('upstream-report.md', 'utf8');
 
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100
+            });
+            const existing = issues.find((issue) => issue.title === title);
+
+            if (existing) {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body
+              });
+              core.info(`Updated issue #${existing.number}`);
+            } else {
+              const created = await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body
+              });
+              core.info(`Created issue #${created.data.number}`);
+            }
+
+  validated-pr:
+    needs: check
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.open_validated_pr == true && needs.check.outputs.updates_count != '0' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pyyaml
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
+      - name: Apply upstream updates
+        env:
+          UPDATES_JSON: ${{ needs.check.outputs.updates }}
+        run: python3 scripts/apply_upstream_updates.py
+      - name: Build and test updated packages
+        env:
+          UPDATES_JSON: ${{ needs.check.outputs.updates }}
+        run: |
+          set -euo pipefail
+          mapfile -t packages < <(UPDATES_JSON="$UPDATES_JSON" python3 - <<'PY'
+          import json
+          import os
+          updates = json.loads(os.environ.get('UPDATES_JSON') or '[]')
+          pkgs = sorted({entry.get('package') for entry in updates if entry.get('package')})
+          for pkg in pkgs:
+              print(pkg)
+          PY
+          )
+
+          for pkg in "${packages[@]}"; do
+            echo "==> build ${pkg}"
+            make build PACKAGE="${pkg}"
+            echo "==> test ${pkg}"
+            make test PACKAGE="${pkg}"
+            if [ -x "containers/${pkg}/tests/e2e.sh" ]; then
+              image_ref=$(PACKAGE="${pkg}" python3 - <<'PY'
+              import os
+              from pathlib import Path
+              import yaml
+              pkg = os.environ["PACKAGE"]
+              metadata_path = Path("containers") / pkg / "container.yaml"
+              data = yaml.safe_load(metadata_path.read_text())
+              image = data["publish"]["image"]
+              version = data["version"]["current"]
+              print(f"{image}:{version}")
+              PY
+              )
+              echo "==> e2e ${pkg}"
+              SKIP_PACKAGE_BUILD=1 SKIP_PACKAGE_TEST=1 E2E_IMAGE="${image_ref}" make e2e PACKAGE="${pkg}"
+            fi
+          done
       - name: Detect changes
-        if: ${{ steps.upstream.outputs.updates_count != '0' }}
         id: changes
         run: |
           if git diff --quiet; then
@@ -92,46 +190,19 @@ jobs:
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-
       - name: Render PR body
-        if: ${{ steps.upstream.outputs.updates_count != '0' && steps.changes.outputs.changed == 'true' }}
+        if: ${{ steps.changes.outputs.changed == 'true' }}
         env:
-          UPDATES_JSON: ${{ steps.upstream.outputs.updates }}
-        run: |
-          python3 - <<'PY' > pr-body.md
-          import json
-          import os
-
-          updates = json.loads(os.environ.get('UPDATES_JSON') or '[]')
-          lines = []
-          for entry in updates:
-              pkg = entry.get('package') or 'unknown'
-              current = entry.get('current') or 'unknown'
-              latest = entry.get('latest') or 'unknown'
-              extra = ""
-              if pkg == "spark":
-                  flavor = entry.get("iceberg_runtime_flavor")
-                  iceberg = entry.get("iceberg_version")
-                  if flavor or iceberg:
-                      extra = f" (iceberg {iceberg or 'unknown'}, flavor {flavor or 'unknown'})"
-              lines.append(f"- **{pkg}**: {current} → {latest}{extra}")
-
-          body = [
-              "The scheduled upstream check detected new releases:",
-              "",
-              *lines,
-              "",
-              "Please review and adjust Dockerfiles/build args as needed (e.g., Spark Iceberg runtime flavor).",
-          ]
-          print("\n".join(body))
-          PY
-
-      - name: Create or update PR
-        if: ${{ steps.upstream.outputs.updates_count != '0' && steps.changes.outputs.changed == 'true' }}
+          RESULTS_JSON: ${{ needs.check.outputs.results }}
+          UPDATES_JSON: ${{ needs.check.outputs.updates }}
+        run: python3 scripts/render_upstream_report.py > pr-body.md
+      - name: Create validated upgrade PR
+        if: ${{ steps.changes.outputs.changed == 'true' }}
         uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0
         with:
-          commit-message: "chore: apply upstream version updates"
-          title: "Upstream version updates"
+          commit-message: "chore: apply validated upstream version updates"
+          title: "Validated upstream version updates"
           body-path: pr-body.md
-          branch: upstream-updates
+          branch: upstream-updates-validated
+          draft: true
           labels: upstream-update

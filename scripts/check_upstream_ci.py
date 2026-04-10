@@ -118,6 +118,8 @@ for entry in results:
         spark_update_gate(entry)
 
 updates = [r for r in results if r.get('status') == 'update_available']
+blocked = [r for r in results if r.get('status') == 'blocked']
+errors = [r for r in results if r.get('status') == 'error']
 print(json.dumps(results, indent=2))
 
 def write_output(name: str, value):
@@ -131,3 +133,7 @@ def write_output(name: str, value):
 write_output('results', results)
 write_output('updates', updates)
 write_output('updates_count', len(updates))
+write_output('blocked', blocked)
+write_output('blocked_count', len(blocked))
+write_output('errors', errors)
+write_output('errors_count', len(errors))
