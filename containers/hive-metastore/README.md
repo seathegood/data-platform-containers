@@ -22,7 +22,7 @@ docker run -d \
   -e METASTORE_DB=metastore \
   -e METASTORE_DB_USER=metastore \
   -e METASTORE_DB_PASSWORD=change-me \
-  seathegood/hive-metastore:4.1.0
+  ghcr.io/seathegood/data-platform-containers/hive-metastore:4.2.0
 ```
 
 `tests/metadata.py` validates the metadata schema and environment requirements defined in `container.yaml`.
@@ -46,7 +46,7 @@ services:
       POSTGRES_USER: metastore
       POSTGRES_PASSWORD: change-me
   hive-metastore:
-    image: ghcr.io/seathegood/data-platform-containers/hive-metastore:4.1.0
+    image: ghcr.io/seathegood/data-platform-containers/hive-metastore:4.2.0
     depends_on:
       - postgres
     environment:

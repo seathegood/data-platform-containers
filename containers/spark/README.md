@@ -7,7 +7,7 @@ The entrypoint runs `spark-submit` directly and does not clone or install job co
 Run a simple version check:
 
 ```bash
-docker run --rm ghcr.io/seathegood/data-platform-containers/spark-runtime:4.0.1 --version
+docker run --rm ghcr.io/seathegood/data-platform-containers/spark-runtime:4.0.2 --version
 ```
 
 Base image: Python 3.12 slim (Bookworm), Java 17. Logging defaults to WARN via the bundled `log4j2.properties` in `containers/spark/files/`; override by mounting your own config to `/opt/spark/conf/log4j2.properties`.
@@ -18,7 +18,7 @@ Run a Spark application (mount or bake your app into the image):
 docker run --rm \
   -v "$PWD/app:/opt/app" \
   -w /opt/app \
-  ghcr.io/seathegood/data-platform-containers/spark-runtime:4.0.1 \
+  ghcr.io/seathegood/data-platform-containers/spark-runtime:4.0.2 \
   spark-submit /opt/app/main.py
 ```
 
@@ -77,6 +77,7 @@ integration test in the downstream environment where the metastore is available.
 
 ## Iceberg runtime flavor
 `ICEBERG_RUNTIME_FLAVOR` controls the Spark 4.x Iceberg artifacts (e.g., `4.0_2.13`). Change it only when targeting a different Spark/Iceberg matrix and rerun the smoke tests.
+Spark `4.1.x` is available upstream, but this image remains on Spark `4.0.x` until Iceberg publishes `iceberg-spark-runtime-4.1_2.13`.
 
 ## Pre-baked dependencies
 Add shared wheels to `containers/spark/files/wheels/` to bake them into the image.

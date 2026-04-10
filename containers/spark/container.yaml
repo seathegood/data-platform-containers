@@ -11,7 +11,7 @@ links:
 license: Apache-2.0
 version:
   strategy: http-directory
-  current: "4.0.1"
+  current: "4.0.2"
   component: spark
   source:
     url: https://archive.apache.org/dist/spark/
@@ -20,6 +20,8 @@ version:
     Use the Apache archive or mirror for fetching Spark releases.
     Version pin tracked in this repository's issue tracker.
     Hadoop AWS SDK v2 bundle version is pinned to the hadoop-project 3.4.1 POM.
+    Spark 4.1.x is available upstream, but this image remains on 4.0.x until a matching
+    Apache Iceberg Spark runtime artifact is published for 4.1_2.13.
 runtime:
   base_image: "python:3.12-slim-bookworm@sha256:4a3ceab05b4e396df42a042415e43a286bb5793352b9258f889d6c7d38ed01fb"
   user: "spark"
