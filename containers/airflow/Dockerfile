@@ -61,6 +61,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 # Security overrides for packages inherited from base image / constraints chain.
 RUN python -m pip install --no-cache-dir --upgrade \
+    "setuptools>=81.0.0" \
     "jaraco.context>=6.1.0" \
     "litellm>=1.83.0" \
     "wheel>=0.46.2"
