@@ -39,6 +39,8 @@ build:
     GX_VERSION: "!version.current"
     GX_UID: "886"
     GX_GID: "886"
+    SETUPTOOLS_VERSION: "82.0.1"
+    WHEEL_VERSION: "0.46.2"
 tests:
   - name: metadata
     command: "./tests/metadata.py"

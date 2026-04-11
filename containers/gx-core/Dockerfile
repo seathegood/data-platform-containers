@@ -7,6 +7,8 @@ FROM ${BASE_IMAGE} AS runtime
 ARG GX_VERSION
 ARG GX_UID
 ARG GX_GID
+ARG SETUPTOOLS_VERSION
+ARG WHEEL_VERSION
 
 ENV PATH="/opt/gx/bin:${PATH}" \
     GX_HOME="/var/lib/gx" \
@@ -20,8 +22,9 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends tini git curl; \
     rm -rf /var/lib/apt/lists/*
 
-RUN python -m venv /opt/gx; \
-    /opt/gx/bin/pip install --no-cache-dir --upgrade pip; \
+RUN python -m pip install --no-cache-dir --upgrade "setuptools==${SETUPTOOLS_VERSION}" "wheel==${WHEEL_VERSION}"; \
+    python -m venv /opt/gx; \
+    /opt/gx/bin/pip install --no-cache-dir --upgrade pip "setuptools==${SETUPTOOLS_VERSION}" "wheel==${WHEEL_VERSION}"; \
     /opt/gx/bin/pip install --no-cache-dir "great_expectations==${GX_VERSION}"
 
 RUN set -eux; \
