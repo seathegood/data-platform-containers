@@ -61,12 +61,11 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 # Security overrides for packages inherited from base image / constraints chain.
 RUN PIP_USER=0 /usr/python/bin/python -m pip install --no-cache-dir --upgrade \
-    "setuptools>=82.0.1"
-
-RUN python -m pip install --no-cache-dir --upgrade \
-    "setuptools>=81.0.0" \
-    "jaraco.context>=6.1.0" \
-    "litellm>=1.83.0" \
-    "wheel>=0.46.2"
+        "setuptools>=82.0.1" \
+    && python -m pip install --no-cache-dir --upgrade \
+        "setuptools>=82.0.1" \
+        "jaraco.context>=6.1.0" \
+        "litellm>=1.83.0" \
+        "wheel>=0.46.2"
 
 USER airflow
