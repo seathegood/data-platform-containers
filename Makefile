@@ -8,7 +8,9 @@ endif
 
 PACKAGES := $(shell ./scripts/package.py | awk '/^-/{print $$2}' | grep -v '^_')
 
-.PHONY: bootstrap doctor list build build-all test test-all e2e publish show detect-version smoke-all check lint format format-check unit clean-local shellcheck hadolint
+TRIVY_IMAGE ?= aquasec/trivy:0.69.3
+
+.PHONY: bootstrap doctor list build build-all test test-all e2e publish show detect-version smoke-all check lint format format-check unit clean-local shellcheck hadolint trivy trivy-all
 
 bootstrap:
 	@python3 -m venv .venv
@@ -99,6 +101,21 @@ hadolint:
 	else \
 		echo "No Dockerfiles to lint."; \
 	fi
+
+trivy:
+	@test -n "$(PACKAGE)" || (echo "Set PACKAGE=<slug>" && exit 1)
+	@image_ref=$$($(if $(wildcard $(VENV_BIN)/python),$(VENV_BIN)/python,python3) -c 'import yaml; m=yaml.safe_load(open("containers/$(PACKAGE)/container.yaml", encoding="utf-8")); print("{}:{}".format(m["publish"]["image"], m["version"]["current"]))'); \
+	echo "Scanning $$image_ref with $(TRIVY_IMAGE)"; \
+	docker run --rm \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		"$(TRIVY_IMAGE)" \
+		image --ignore-unfixed --severity CRITICAL,HIGH --exit-code 1 --scanners vuln "$$image_ref"
+
+trivy-all:
+	@for pkg in $(PACKAGES); do \
+		echo "==> $$pkg"; \
+		$(MAKE) trivy PACKAGE=$$pkg || exit $$?; \
+	done
 
 lint: check shellcheck hadolint
 
