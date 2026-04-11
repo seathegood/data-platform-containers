@@ -44,6 +44,13 @@ Community contributions live under `containers/_template` and follow the same re
 - Transient local outputs live in `_tmp/` (untracked).
 - Generated reports should go in `_reports/` (untracked).
 
+## Local Security Scanning (Trivy)
+- Scan one image: `make trivy PACKAGE=<slug>`
+- Scan all images: `make trivy-all`
+- Scans fail on `CRITICAL,HIGH` and use `--ignore-unfixed`.
+- Optional package-scoped ignore files are supported at `containers/<slug>/trivyignore.txt`.
+- Keep ignore files minimal (CVE IDs only), document rationale in comments, and revalidate on dependency version bumps.
+
 ## Build and Test Locally
 ```bash
 make bootstrap

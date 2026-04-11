@@ -27,6 +27,9 @@ docker run -d \
 
 `tests/metadata.py` validates the metadata schema and environment requirements defined in `container.yaml`.
 
+## Security scan note
+Trivy image scanning for this package supports a package-scoped ignore file at `containers/hive-metastore/trivyignore.txt` for upstream Hive/Hadoop transitive JAR CVEs that are not yet remediated upstream. Revisit and trim this list on every Hive/Hadoop version bump.
+
 ## Schema bootstrapping and upgrades
 - If `hive-site.xml` is not mounted, the entrypoint generates one using the Postgres env vars.
 - If the `VERSION` table is missing, the entrypoint applies `hive-schema-<SCHEMA_VERSION>.postgres.sql`.

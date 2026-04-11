@@ -41,6 +41,15 @@ It writes data under `s3a://spark-test` and cleans up the compose stack afterwar
 `make test PACKAGE=spark` runs the compose smoke test, so Docker and Docker Compose must be available.
 MinIO data persists under `containers/spark/local/minio/`; prune it if you want a clean run.
 
+## Local troubleshooting
+If compose smoke fails with `No space left on device` (commonly while Spark creates `/tmp/blockmgr-*`), clean Docker disk state and rerun:
+
+```bash
+docker system prune -af --volumes
+make build PACKAGE=spark
+make test PACKAGE=spark
+```
+
 ## AWS SDK v2 modularization
 The runtime uses a curated set of AWS SDK v2 modules (no `bundle` jar) to keep the image size smaller.
 `AWS_SDK_MODULES` in `containers/spark/container.yaml` is the source of truth. If downstream workloads

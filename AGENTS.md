@@ -67,10 +67,12 @@
 - Test all: `make test-all`
 - Show metadata: `make show PACKAGE=<slug>`
 - Contract checks: `make check` (also exposed via `make lint` and `make unit`)
+- Trivy scan (single package): `make trivy PACKAGE=<slug>`
+- Trivy scan (all packages): `make trivy-all`
 - Cleanup local artifacts: `make clean-local`
 - Publish (maintainers only): `make publish PACKAGE=<slug>`
 - Build logs (optional): `BUILD_LOG=1 make build PACKAGE=<slug>` writes to `logs/build-<slug>-<timestamp>.log` (override dir with `LOG_DIR=...`)
-- Run Trivy via CI; locally, fail on CRITICAL/HIGH where possible.
+- Run Trivy in CI and locally; fail on CRITICAL/HIGH.
 
 ## Per-Image Notes
 ### Airflow
@@ -112,6 +114,12 @@
 - Remove package caches and build deps where feasible.
 - Trivy must pass with CRITICAL/HIGH thresholds.
 - Add integration smokes where missing (Hive Metastore, devpi-server, gx-core) to catch runtime/secret handling regressions.
+
+## Trivy Ignore Policy
+- Use package-scoped ignore files only: `containers/<slug>/trivyignore.txt`.
+- List CVE IDs only; keep entries minimal and specific to current upstream constraints.
+- Add a short rationale comment at the top of each ignore file.
+- Revalidate and remove ignores whenever upstream package/runtime versions are bumped.
 
 ## Dependency Rules
 - Pin versions for pip and OS packages when possible.
