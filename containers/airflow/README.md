@@ -6,6 +6,8 @@ native username/password login is available; enable remote-user auth only when
 running behind an ALB or similar proxy that asserts user identity. The image ships the
 `airflow_ext.alb_fab_auth_manager.AlbFabAuthManager` module to bridge ALB OIDC headers
 to Airflow 3 UI JWT cookies via `AIRFLOW__CORE__AUTH_MANAGER`.
+Security hotfixes for known CVEs may be applied as explicit post-constraints package
+upgrades in the Dockerfile when upstream constraints lag patched releases.
 
 ## Local Compose
 Use `docker-compose.airflow.local.yml` from the repo root to run a local stack that

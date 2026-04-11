@@ -59,4 +59,10 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     fi && \
     rm -f "$CONSTRAINTS_PATH"
 
+# Security overrides for packages inherited from base image / constraints chain.
+RUN python -m pip install --no-cache-dir --upgrade \
+    "jaraco.context>=6.1.0" \
+    "litellm>=1.83.0" \
+    "wheel>=0.46.2"
+
 USER airflow

@@ -16,6 +16,8 @@ version:
   notes: |
     Refer to https://airflow.apache.org/docs/#release-notes for upgrade guidance.
     Version pin tracked in this repository's issue tracker.
+    CVE response: we allow explicit post-constraints security override pins for
+    `litellm`, `jaraco.context`, and `wheel` when upstream/base constraints lag fixes.
 runtime:
   base_image: "apache/airflow:3.2.0-python3.10@sha256:b540bb721a222119c0cb34f09b411eef454d1ad427e39383c28cc7ff8b722871"
   user: "airflow"
