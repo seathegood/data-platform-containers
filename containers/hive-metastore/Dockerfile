@@ -17,7 +17,7 @@ ENV HIVE_HOME=/opt/hive \
 COPY versions.json /opt/versions.json
 
 # hadolint ignore=DL3018
-RUN apk update && apk add --no-cache \
+RUN apk update && apk upgrade --no-cache && apk add --no-cache \
     bash \
     wget \
     openssl \
@@ -93,7 +93,7 @@ LABEL org.opencontainers.image.vendor="Sea the Good, LLC" \
 
 # Install Prerequisites
 # hadolint ignore=DL3018
-RUN apk update && apk add --no-cache \
+RUN apk update && apk upgrade --no-cache && apk add --no-cache \
     bash \
     netcat-openbsd \
     ca-certificates \

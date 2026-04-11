@@ -16,6 +16,7 @@ ENV PATH="/opt/gx/bin:${PATH}" \
 # hadolint ignore=DL3008
 RUN set -eux; \
     apt-get update; \
+    apt-get upgrade -y; \
     apt-get install -y --no-install-recommends tini git curl; \
     rm -rf /var/lib/apt/lists/*
 

@@ -20,6 +20,7 @@ USER root
 # base image maintained upstream; OS packages pinned during release process
 # hadolint ignore=DL3008
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
         build-essential \
         curl \

@@ -57,6 +57,7 @@ ENV SPARK_HOME=/opt/spark \
 
 # hadolint ignore=DL3008
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
         bash \
         ca-certificates \
@@ -518,6 +519,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 # hadolint ignore=DL3008
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends \
         bash \
         ca-certificates \
