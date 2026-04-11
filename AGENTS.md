@@ -28,6 +28,17 @@
 - Run Hadolint on modified Dockerfiles when possible.
 - Never publish without explicit approval.
 
+## CI Release-Gating Standard
+- CI and release workflows must run test builds before any publish step.
+- Test stage uses `linux/amd64` with `load: true` to support local smoke/e2e execution in runner Docker.
+- Publish stage must depend on test stage success and only run for approved publish events.
+- Publish stage must build and push a multi-arch manifest list including both `linux/amd64` and `linux/arm64`.
+- Publish stage must verify manifest platforms before signing.
+- Trivy must block on `CRITICAL,HIGH` at both filesystem stage and image stage.
+- Cosign signing must happen after manifest verification and security gates.
+- All workflow `uses:` references must be pinned to immutable 40-character commit SHAs.
+- Workflow permissions should be least-privilege by default; elevate `packages:write` and `id-token:write` only for publish/sign jobs.
+
 ## Images (All Critical)
 - `airflow`
 - `spark`

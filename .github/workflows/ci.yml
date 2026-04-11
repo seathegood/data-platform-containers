@@ -8,8 +8,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
-  id-token: write
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -126,7 +124,7 @@ jobs:
       - name: Repository checks
         run: make check
 
-  package:
+  package-test:
     needs: [determine-packages, lint]
     if: ${{ needs.determine-packages.outputs.packages != '[]' }}
     runs-on: ubuntu-latest
@@ -152,7 +150,120 @@ jobs:
         id: meta
         run: |
           python3 - <<'PY'
-          import json
+          import os
+          from pathlib import Path
+          import yaml
+
+          package = os.environ['PACKAGE']
+          metadata_path = Path('containers') / package / 'container.yaml'
+          metadata = yaml.safe_load(metadata_path.read_text())
+
+          def resolve(value):
+              if isinstance(value, str) and value.startswith('!'):
+                  node = metadata
+                  for part in value[1:].split('.'):
+                      if isinstance(node, dict) and part in node:
+                          node = node[part]
+                      else:
+                          raise SystemExit(f"Unable to resolve token {value}")
+                  return resolve(node)
+              return value
+
+          build_args = metadata.get('build', {}).get('args', {})
+          resolved_args = {key: str(resolve(val)) for key, val in build_args.items()}
+          image = metadata.get('publish', {}).get('image')
+          if not image:
+              raise SystemExit('publish.image must be defined')
+          version = str(metadata.get('version', {}).get('current', '')).strip()
+          version_tag = f"{image}:{version}" if version else f"{image}:latest"
+
+          def write_output(name, value):
+              with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as fh:
+                  if isinstance(value, list):
+                      fh.write(f"{name}<<EOF\n")
+                      fh.write("\n".join(value) + "\n")
+                      fh.write("EOF\n")
+                  else:
+                      fh.write(f"{name}={value}\n")
+
+          write_output('image', image)
+          if resolved_args:
+              build_args_block = [f"{k}={v}" for k, v in resolved_args.items()]
+              write_output('build_args', build_args_block)
+          else:
+              write_output('build_args', [])
+          write_output('version_tag', version_tag)
+          PY
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd
+
+      - name: Build test image
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f
+        with:
+          context: containers/${{ matrix.package }}
+          file: containers/${{ matrix.package }}/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.version_tag }}
+          build-args: ${{ steps.meta.outputs.build_args }}
+          cache-from: type=gha,scope=${{ matrix.package }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.package }}
+
+      - name: Run metadata tests
+        run: ./scripts/package.py test "$PACKAGE"
+
+      - name: Run end-to-end tests
+        if: ${{ hashFiles(format('containers/{0}/tests/e2e.sh', matrix.package)) != '' }}
+        env:
+          SKIP_PACKAGE_BUILD: "1"
+          SKIP_PACKAGE_TEST: "1"
+          E2E_IMAGE: ${{ steps.meta.outputs.version_tag }}
+        run: containers/${{ matrix.package }}/tests/e2e.sh
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+
+      - name: Trivy image scan (test image)
+        run: trivy image --ignore-unfixed --severity CRITICAL,HIGH --exit-code 1 "${{ steps.meta.outputs.version_tag }}"
+
+      - name: Publish skipped summary
+        if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
+        run: |
+          echo "Test-only run for $PACKAGE. Publish and signing are skipped." >> "$GITHUB_STEP_SUMMARY"
+
+  package-publish:
+    needs: [determine-packages, lint, package-test]
+    if: ${{ needs.determine-packages.outputs.packages != '[]' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.determine-packages.outputs.packages) }}
+    env:
+      PACKAGE: ${{ matrix.package }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install tooling
+        run: pip install pyyaml
+
+      - name: Prepare metadata
+        id: meta
+        run: |
+          python3 - <<'PY'
           import os
           from pathlib import Path
           import yaml
@@ -183,11 +294,6 @@ jobs:
 
           sha = os.environ.get('GITHUB_SHA', '')
           sha_tag = f"sha-{sha[:12]}" if sha else None
-
-          def extend_unique(tags, items):
-              for item in items:
-                  if item and item not in tags:
-                      tags.append(item)
 
           if 'latest' not in resolved_tags:
               resolved_tags.append('latest')
@@ -221,50 +327,60 @@ jobs:
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd
 
       - name: Log in to GHCR
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build container image
+      - name: Build and publish multi-arch image
         id: build
         uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f
         with:
           context: containers/${{ matrix.package }}
           file: containers/${{ matrix.package }}/Dockerfile
-          platforms: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-          load: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
+          platforms: linux/amd64,linux/arm64
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           build-args: ${{ steps.meta.outputs.build_args }}
           cache-from: type=gha,scope=${{ matrix.package }}
           cache-to: type=gha,mode=max,scope=${{ matrix.package }}
 
-      - name: Pull pushed image
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        run: docker pull "${{ steps.meta.outputs.version_tag }}"
-
-      - name: Run metadata tests
-        run: ./scripts/package.py test "$PACKAGE"
-
-      - name: Run end-to-end tests
-        if: ${{ hashFiles(format('containers/{0}/tests/e2e.sh', matrix.package)) != '' }}
+      - name: Verify manifest contains amd64 and arm64
         env:
-          SKIP_PACKAGE_BUILD: "1"
-          SKIP_PACKAGE_TEST: "1"
-          E2E_IMAGE: ${{ steps.meta.outputs.version_tag }}
-        run: containers/${{ matrix.package }}/tests/e2e.sh
+          IMAGE_REF: ${{ steps.meta.outputs.image }}@${{ steps.build.outputs.digest }}
+        run: |
+          docker buildx imagetools inspect --raw "$IMAGE_REF" > manifest.json
+          python3 - <<'PY'
+          import json
+
+          with open('manifest.json', 'r', encoding='utf-8') as fh:
+              data = json.load(fh)
+
+          arches = {
+              f"{m.get('platform', {}).get('os')}/{m.get('platform', {}).get('architecture')}"
+              for m in data.get('manifests', [])
+          }
+          expected = {'linux/amd64', 'linux/arm64'}
+          missing = sorted(expected - arches)
+          if missing:
+              raise SystemExit(f"Missing platform(s) in published manifest: {', '.join(missing)}")
+          print(f"Verified platforms: {', '.join(sorted(expected))}")
+          PY
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
+
+      - name: Trivy image scan (published digest)
+        run: trivy image --ignore-unfixed --severity CRITICAL,HIGH --exit-code 1 "${{ steps.meta.outputs.image }}@${{ steps.build.outputs.digest }}"
 
       - name: Install cosign
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003
         with:
           cosign-release: 'v3.0.6'
 
       - name: Sign container images
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         env:
           COSIGN_EXPERIMENTAL: '1'
         run: |
@@ -277,7 +393,6 @@ jobs:
           cosign sign --yes "${{ steps.meta.outputs.image }}@${{ steps.build.outputs.digest }}"
 
       - name: Publish image digest summary
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
           echo "Published ${{ steps.meta.outputs.version_tag }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Digest: ${{ steps.build.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"

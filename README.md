@@ -67,6 +67,15 @@ make publish PACKAGE=spark
 
 Images are tagged according to `containers/<name>/container.yaml#publish`. CI automatically stamps provenance metadata, adds `sha-<git>` tags, and performs Trivy scans before pushes.
 
+## CI Standard (Release-Gating)
+- Test before publish: CI and release workflows build a test image (`linux/amd64`, `load: true`) and run metadata/e2e tests before any registry push.
+- Publish only after green tests: multi-arch publish jobs are gated on successful test jobs.
+- Multi-arch completeness: publish jobs must produce and verify manifest entries for both `linux/amd64` and `linux/arm64`.
+- Security gates: Trivy blocks on `CRITICAL,HIGH` in filesystem scans and image scans.
+- Signing order: Cosign signs tags/digests only after manifest verification and security checks pass.
+- Immutable workflow references: all GitHub Action `uses:` entries are pinned to full commit SHAs (no mutable tags/branches).
+- Least-privilege permissions: workflows default to read-only; `packages:write` and `id-token:write` are scoped to publish/sign jobs.
+
 ## Tagging & Registry (GHCR)
 - Registry: `ghcr.io/seathegood/data-platform-containers/<slug>`
 - Tags: `latest` on every push, semantic version tags (`x`, `x.y`, `x.y.z`) when `version.current` is set, `sha-<12char>` from CI for provenance, and optional `stable` during releases.
