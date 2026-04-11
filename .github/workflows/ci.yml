@@ -228,10 +228,17 @@ jobs:
 
       - name: Trivy image scan (test image)
         run: |
+          IGNORE_FILE="containers/${PACKAGE}/trivyignore.txt"
+          IGNORE_ARGS=""
+          if [ -f "$IGNORE_FILE" ]; then
+            echo "Using Trivy ignore file: $IGNORE_FILE"
+            IGNORE_ARGS="--ignorefile /workspace/${IGNORE_FILE}"
+          fi
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/workspace:ro" \
             "${{ env.TRIVY_IMAGE }}" \
-            image --ignore-unfixed --severity CRITICAL,HIGH --exit-code 1 "${{ steps.meta.outputs.version_tag }}"
+            image --ignore-unfixed --severity CRITICAL,HIGH --exit-code 1 ${IGNORE_ARGS} "${{ steps.meta.outputs.version_tag }}"
 
       - name: Publish skipped summary
         if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
@@ -374,10 +381,17 @@ jobs:
 
       - name: Trivy image scan (published digest)
         run: |
+          IGNORE_FILE="containers/${PACKAGE}/trivyignore.txt"
+          IGNORE_ARGS=""
+          if [ -f "$IGNORE_FILE" ]; then
+            echo "Using Trivy ignore file: $IGNORE_FILE"
+            IGNORE_ARGS="--ignorefile /workspace/${IGNORE_FILE}"
+          fi
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/workspace:ro" \
             "${{ env.TRIVY_IMAGE }}" \
-            image --ignore-unfixed --severity CRITICAL,HIGH --exit-code 1 "${{ steps.meta.outputs.image }}@${{ steps.build.outputs.digest }}"
+            image --ignore-unfixed --severity CRITICAL,HIGH --exit-code 1 ${IGNORE_ARGS} "${{ steps.meta.outputs.image }}@${{ steps.build.outputs.digest }}"
 
       - name: Install cosign
         uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003

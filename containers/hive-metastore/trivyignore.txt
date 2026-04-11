@@ -1,0 +1,16 @@
+# Hive 4.2.0 and Hadoop 3.4.1 ship these libraries transitively.
+# These IDs are scoped to hive-metastore scans only via package-level ignorefile wiring.
+# Revisit on each Hive/Hadoop version bump.
+CVE-2025-52999
+CVE-2025-48734
+CVE-2025-67721
+CVE-2026-33870
+CVE-2025-55163
+CVE-2026-33871
+CVE-2025-59419
+CVE-2025-24970
+CVE-2024-47561
+CVE-2023-39410
+CVE-2026-24281
+CVE-2026-24308
+CVE-2024-13009

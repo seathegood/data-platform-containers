@@ -105,11 +105,18 @@ hadolint:
 trivy:
 	@test -n "$(PACKAGE)" || (echo "Set PACKAGE=<slug>" && exit 1)
 	@image_ref=$$($(if $(wildcard $(VENV_BIN)/python),$(VENV_BIN)/python,python3) -c 'import yaml; m=yaml.safe_load(open("containers/$(PACKAGE)/container.yaml", encoding="utf-8")); print("{}:{}".format(m["publish"]["image"], m["version"]["current"]))'); \
+	ignore_file="containers/$(PACKAGE)/trivyignore.txt"; \
+	ignore_arg=""; \
+	if [ -f "$$ignore_file" ]; then \
+		echo "Using Trivy ignore file $$ignore_file"; \
+		ignore_arg="--ignorefile /workspace/$$ignore_file"; \
+	fi; \
 	echo "Scanning $$image_ref with $(TRIVY_IMAGE)"; \
 	docker run --rm \
 		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v "$$(pwd):/workspace:ro" \
 		"$(TRIVY_IMAGE)" \
-		image --ignore-unfixed --severity CRITICAL,HIGH --exit-code 1 --scanners vuln "$$image_ref"
+		image --ignore-unfixed --severity CRITICAL,HIGH --exit-code 1 --scanners vuln $$ignore_arg "$$image_ref"
 
 trivy-all:
 	@for pkg in $(PACKAGES); do \
