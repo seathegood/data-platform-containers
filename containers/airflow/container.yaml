@@ -11,7 +11,7 @@ links:
 license: Apache-2.0
 version:
   strategy: pypi
-  current: "3.2.0"
+  current: "3.2.1"
   component: apache-airflow
   notes: |
     Refer to https://airflow.apache.org/docs/#release-notes for upgrade guidance.
@@ -20,7 +20,7 @@ version:
     `setuptools`, `litellm`, `jaraco.context`, and `wheel` when upstream/base
     constraints lag fixes.
 runtime:
-  base_image: "apache/airflow:3.2.0-python3.10@sha256:b540bb721a222119c0cb34f09b411eef454d1ad427e39383c28cc7ff8b722871"
+  base_image: "apache/airflow:3.2.1-python3.10@sha256:4ee3b6285b1b3950bd9c903f5140b6a5dcedeee51947a6265870ee0f53f5cbfb"
   user: "airflow"
   workdir: "/opt/airflow"
   entrypoint:
