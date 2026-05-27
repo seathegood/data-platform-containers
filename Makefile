@@ -10,7 +10,7 @@ PACKAGES := $(shell ./scripts/package.py | awk '/^-/{print $$2}' | grep -v '^_')
 
 TRIVY_IMAGE ?= aquasec/trivy:0.69.3
 
-.PHONY: bootstrap doctor list build build-all test test-all e2e publish show detect-version smoke-all check lint format format-check unit clean-local shellcheck hadolint trivy trivy-all
+.PHONY: bootstrap doctor lint-tools list build build-all test test-all e2e publish show detect-version smoke-all check lint format format-check unit clean-local shellcheck hadolint trivy trivy-all
 
 bootstrap:
 	@python3 -m venv .venv
@@ -19,8 +19,13 @@ bootstrap:
 doctor:
 	@command -v docker >/dev/null || (echo "docker not found in PATH" && exit 1)
 	@command -v python3 >/dev/null || (echo "python3 not found in PATH" && exit 1)
+	@$(MAKE) lint-tools
 	@$(if $(wildcard $(VENV_BIN)/python),$(VENV_BIN)/python,python3) -c 'import yaml'
 	@echo "Environment looks healthy."
+
+lint-tools:
+	@command -v shellcheck >/dev/null || (echo "shellcheck not found in PATH" && exit 1)
+	@command -v hadolint >/dev/null || (echo "hadolint not found in PATH" && exit 1)
 
 list:
 	@./scripts/package.py
@@ -85,7 +90,7 @@ check:
 	done
 
 shellcheck:
-	@command -v shellcheck >/dev/null || (echo "shellcheck not found. Install shellcheck to run local lint." && exit 1)
+	@$(MAKE) lint-tools
 	@sh_files=$$(git ls-files '*.sh'); \
 	if [ -n "$$sh_files" ]; then \
 		echo "$$sh_files" | xargs -r shellcheck; \
@@ -94,7 +99,7 @@ shellcheck:
 	fi
 
 hadolint:
-	@command -v hadolint >/dev/null || (echo "hadolint not found. Install hadolint to run local lint." && exit 1)
+	@$(MAKE) lint-tools
 	@dockerfiles=$$(git ls-files '*Dockerfile'); \
 	if [ -n "$$dockerfiles" ]; then \
 		echo "$$dockerfiles" | xargs -n1 hadolint; \

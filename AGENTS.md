@@ -22,6 +22,8 @@
 - Limit changes to one image at a time unless explicitly requested.
 - Prefer `make` targets over ad hoc commands when an equivalent exists.
 - Run `make doctor` before substantial local execution.
+- Run `make lint` for every change set before opening/updating a PR.
+- If a change touches any `Dockerfile` or `*.sh`, lint must pass locally (`make shellcheck hadolint` or `make lint`) before handoff.
 - Update `container.yaml` and `Dockerfile` together for version or build-arg changes.
 - Run `make test PACKAGE=<slug>` after edits when possible.
 - Run Shellcheck on modified shell scripts when possible.

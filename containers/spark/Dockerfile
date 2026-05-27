@@ -439,8 +439,9 @@ RUN old_netty_version="4.2.7.Final" \
     && mapfile -t old_netty_jars < <(find "$SPARK_HOME/jars" -maxdepth 1 -type f -name "*-${old_netty_version}*.jar" -print) \
     && for old_jar in "${old_netty_jars[@]}"; do \
          old_name="$(basename "$old_jar")"; \
-         new_name="${old_name/${old_netty_version}/${NETTY_VERSION}}"; \
-         artifact="${new_name%%-${NETTY_VERSION}*}"; \
+         new_name="${old_name/"$old_netty_version"/"$NETTY_VERSION"}"; \
+         netty_suffix="-${NETTY_VERSION}"; \
+         artifact="${new_name%%"$netty_suffix"*}"; \
          curl -fsSL "https://repo1.maven.org/maven2/io/netty/${artifact}/${NETTY_VERSION}/${new_name}" -o "$SPARK_HOME/jars/${new_name}"; \
          rm -f "$old_jar"; \
        done
