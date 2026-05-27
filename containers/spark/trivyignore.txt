@@ -1,6 +1,8 @@
-# Spark 4.0.2 + Hadoop 3.4.1 + Iceberg 1.10.1 transitive Java dependencies.
+# Spark 4.1.2 + Hadoop 3.4.3 + Iceberg 1.11.0 transitive Java dependencies.
 # Scoped to spark-runtime scans via package-level ignorefile wiring.
 # Revisit on Spark/Hadoop/Iceberg version bumps.
+# CVE-2026-2332 is currently inherited via Spark/Hadoop embedded Jetty artifacts.
+# It should be removed once upstream Spark/Hadoop publish compatible patched dependencies.
 CVE-2025-52999
 CVE-2025-48734
 CVE-2025-67721
@@ -10,3 +12,4 @@ CVE-2026-33871
 CVE-2024-47561
 CVE-2023-39410
 CVE-2025-12183
+CVE-2026-2332

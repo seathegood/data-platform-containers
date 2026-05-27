@@ -22,6 +22,7 @@ ARG JAXB_IMPL_VERSION
 ARG JAXB_CORE_VERSION
 ARG ACTIVATION_VERSION
 ARG SLF4J_API_VERSION
+ARG NETTY_VERSION
 ARG OCI_SOURCE
 ARG OCI_REVISION
 
@@ -48,6 +49,7 @@ ARG JAXB_IMPL_VERSION
 ARG JAXB_CORE_VERSION
 ARG ACTIVATION_VERSION
 ARG SLF4J_API_VERSION
+ARG NETTY_VERSION
 
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 
@@ -132,6 +134,18 @@ RUN if ! find "$SPARK_HOME/jars" -maxdepth 1 -type f -name 'spark-hadoop-cloud_*
           mv "/tmp/spark-${SPARK_VERSION}-bin-hadoop3/jars/${jar_name}" "$SPARK_HOME/jars/${jar_name}"; \
           rm -rf "/tmp/spark-${SPARK_VERSION}-bin-hadoop3" "$tmp_tar"; \
         fi; \
+    fi
+
+# Spark 4.1+ requires DataSketches for function registry initialization.
+# Some "without-hadoop" distributions may omit these jars, so pull matching jars from hadoop3 distro.
+RUN if ! find "$SPARK_HOME/jars" -maxdepth 1 -type f -name 'datasketches-*.jar' -print -quit | grep -q .; then \
+        tmp_tar="/tmp/spark-${SPARK_VERSION}-bin-hadoop3.tgz"; \
+        tmp_dir="/tmp/spark-${SPARK_VERSION}-bin-hadoop3"; \
+        curl -fsSL "https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop3.tgz" -o "$tmp_tar"; \
+        mkdir -p "$tmp_dir"; \
+        tar -xzf "$tmp_tar" -C /tmp; \
+        cp "$tmp_dir"/jars/datasketches-*.jar "$SPARK_HOME/jars/"; \
+        rm -rf "$tmp_dir" "$tmp_tar"; \
     fi
 
 # Add a minimal AWS SDK v2 module set (no bundle) for S3A support.
@@ -409,7 +423,6 @@ RUN curl -fsSL "https://repo1.maven.org/maven2/org/slf4j/slf4j-api/${SLF4J_API_V
       "$SPARK_HOME/jars"/arpack_combined_all-*.jar \
       "$SPARK_HOME/jars"/JTransforms-*.jar \
       "$SPARK_HOME/jars"/commons-math3-*.jar \
-      "$SPARK_HOME/jars"/datasketches-*.jar \
       "$SPARK_HOME/jars"/spark-repl_*.jar \
       "$SPARK_HOME/jars"/spark-shell_*.jar \
   && rm -f "$SPARK_HOME/jars"/netty-tcnative-boringssl-static-*-windows-*.jar \
@@ -420,6 +433,17 @@ RUN curl -fsSL "https://repo1.maven.org/maven2/org/slf4j/slf4j-api/${SLF4J_API_V
        find "$SPARK_HOME/jars" -maxdepth 1 -type f -name 'netty-tcnative-boringssl-static-*.jar' \
          ! -name "*-${keep}.jar" -print -delete; \
      fi
+
+# Replace Spark-bundled Netty 4.2.7.Final jars with a patched version.
+RUN old_netty_version="4.2.7.Final" \
+    && mapfile -t old_netty_jars < <(find "$SPARK_HOME/jars" -maxdepth 1 -type f -name "*-${old_netty_version}*.jar" -print) \
+    && for old_jar in "${old_netty_jars[@]}"; do \
+         old_name="$(basename "$old_jar")"; \
+         new_name="${old_name/${old_netty_version}/${NETTY_VERSION}}"; \
+         artifact="${new_name%%-${NETTY_VERSION}*}"; \
+         curl -fsSL "https://repo1.maven.org/maven2/io/netty/${artifact}/${NETTY_VERSION}/${new_name}" -o "$SPARK_HOME/jars/${new_name}"; \
+         rm -f "$old_jar"; \
+       done
 
 # Provide SLF4J binding for dependencies that still ship SLF4J 1.x.
 RUN log4j_core_jar="$(find "$SPARK_HOME/jars" -maxdepth 1 -type f -name 'log4j-core-*.jar' -print -quit)" \

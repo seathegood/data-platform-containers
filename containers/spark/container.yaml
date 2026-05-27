@@ -1,6 +1,6 @@
 name: "Apache Spark Runtime"
 slug: "spark"
-summary: "Slim Spark 4.0 runtime with Iceberg, Hadoop AWS, and common Python dependencies."
+summary: "Slim Spark 4.1 runtime with Iceberg, Hadoop AWS, and common Python dependencies."
 maintainers:
   - name: Platform Containers Team
     email: containers@example.com
@@ -11,7 +11,7 @@ links:
 license: Apache-2.0
 version:
   strategy: http-directory
-  current: "4.0.2"
+  current: "4.1.2"
   component: spark
   source:
     url: https://archive.apache.org/dist/spark/
@@ -20,8 +20,7 @@ version:
     Use the Apache archive or mirror for fetching Spark releases.
     Version pin tracked in this repository's issue tracker.
     Hadoop AWS SDK v2 bundle version is pinned to the hadoop-project 3.4.1 POM.
-    Spark 4.1.x is available upstream, but this image remains on 4.0.x until a matching
-    Apache Iceberg Spark runtime artifact is published for 4.1_2.13.
+    Spark 4.1.x is supported with the matching Apache Iceberg Spark runtime artifact.
 runtime:
   base_image: "python:3.12-slim-bookworm@sha256:4a3ceab05b4e396df42a042415e43a286bb5793352b9258f889d6c7d38ed01fb"
   user: "spark"
@@ -41,12 +40,12 @@ build:
   args:
     BASE_IMAGE: "!runtime.base_image"
     SPARK_VERSION: "!version.current"
-    HADOOP_VERSION: "3.4.1"
-    HADOOP_AWS_VERSION: "3.4.1"
+    HADOOP_VERSION: "3.4.3"
+    HADOOP_AWS_VERSION: "3.4.3"
     AWS_SDK_BUNDLE_VERSION: "2.24.6"
     AWS_SDK_MODULES: "s3,sts,auth,regions,profiles,imds,url-connection-client,apache-client,s3-transfer-manager,sdk-core,identity-spi,aws-core,http-client-spi,utils,metrics-spi,endpoints-spi,http-auth-spi,http-auth-aws,http-auth,aws-xml-protocol,protocol-core,aws-query-protocol,checksums,checksums-spi,protocols-json,protocols-jsoncore,thirdparty-jackson-core,thirdparty-slf4j-api,arns,glue,kms"
-    ICEBERG_VERSION: "1.10.1"
-    ICEBERG_RUNTIME_FLAVOR: "4.0_2.13"
+    ICEBERG_VERSION: "1.11.0"
+    ICEBERG_RUNTIME_FLAVOR: "4.1_2.13"
     PANDAS_VERSION: "2.2.0"
     PYARROW_VERSION: "15.0.0"
     FASTPARQUET_VERSION: "2024.2.0"
@@ -62,6 +61,7 @@ build:
     JAXB_CORE_VERSION: "2.3.0.1"
     ACTIVATION_VERSION: "1.2.0"
     SLF4J_API_VERSION: "2.0.16"
+    NETTY_VERSION: "4.2.13.Final"
 tests:
   - name: metadata
     command: "./tests/metadata.py"
